@@ -1,13 +1,16 @@
-//	CFD project	
-//	Fractional step method for the incompressible	
-//	Navier-Stokes equations
-//	author: Michael Stumpf
+//CFD project	
+//Fractional step method for the incompressible	Navier-Stokes equations
+//file: main.cpp
+//author: Michael Stumpf
 
 #include <iostream>
+#include <matrixgen.hpp>
+#include <settings.hpp>
 
 using namespace std;
 
 int main(){
-	cout << "Hello CFD!" << endl;
+	SpMat mat = createPredCoeffMat();
+	cout << mat;
 	return 0;
 }

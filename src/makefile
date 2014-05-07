@@ -1,6 +1,8 @@
 IDIR =../include
+EIGENDIR =/usr/include/eigen3
 CXX=g++
-CPPFLAGS=-I$(IDIR)
+CPPFLAGS=-I$(IDIR) -I$(EIGENDIR)
+BINARY=fracstep
 
 ODIR=obj
 LDIR =../lib
@@ -8,21 +10,21 @@ BDIR=../bin
 
 LIBS=
 
-_DEPS =
+_DEPS = settings.hpp matrixgen.hpp
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = main.o
+_OBJ = main.o matrixgen.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
+debug: CPPFLAGS += -g
+debug: $(OBJ)
+	$(CXX) -o $(BDIR)/$(BINARY)-DEBUG $^ $(CPPFLAGS) $(LIBS)
 
 $(ODIR)/%.o: %.cpp $(DEPS)
 	$(CXX) -c -o $@ $< $(CPPFLAGS)
 
-debug: $(OBJ)
-	$(CXX) -o $(BDIR)/fracstep-DEBUG $^ -g $(CPPFLAGS) $(LIBS)
-	
 release: $(OBJ)
-	$(CXX) -o $(BDIR)/fracstep $^ $(CPPFLAGS) $(LIBS)
+	$(CXX) -o $(BDIR)/$(BINARY) $^ $(CPPFLAGS) $(LIBS)
 
 .PHONY: clean
 
