@@ -6,8 +6,13 @@
 #define _MATRIXGEN_
 	//General settings for handability
 	#include <Eigen/SparseCore>
-	typedef Eigen::SparseMatrix<double,Eigen::RowMajor> SpMat;
+	#include <Eigen/Dense>
+	typedef Eigen::SparseMatrix<double,Eigen::RowMajor> SpMat;	//Sparse Matrix
+	typedef Eigen::Matrix< double,Eigen::Dynamic,1> VectorXd;
 	
 	//Function prototypes
-	SpMat createPredCoeffMat();
+	SpMat createCoeffMat(double a,double b);
+	void updateRHS(VectorXd &rhs, VectorXd &ucur, VectorXd &uprev, 
+						VectorXd &vcur, VectorXd &vprev, char comp);
+	inline double interpolate(VectorXd field, int i, int j, char comp);
 #endif
