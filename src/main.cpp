@@ -16,20 +16,13 @@ using namespace std;
 int main(){
 	printSettings();
 	
-	//create coefficient matrix for u,v
-	SpMat coeffMatMomentum = 
-		createCoeffMat(
-			1/DT+2/(RE*DX*DX),
-			-1/(2*RE*DX*DX)
-		);
-	//create coefficient matrix for phi
-	SpMat coeffMatPoisson = 
-		createCoeffMat(
-			1,
-			-0.25
-		);
+	//coefficient matrix for momentum/poisson eq.
+	SpMat* coMatMom = new SpMat(NGP*NGP,NGP*NGP);
+	SpMat* coMatPoi = new SpMat(NGP*NGP,NGP*NGP);
+	createCoeffMat(*coMatMom,1/DT+2/(RE*DX*DX),-1/(2*RE*DX*DX));
+	createCoeffMat(*coMatPoi,1,-0.25);
 		
-	//Initialize velocity field
+	//Allocate memory
 	VectorXd *u_current = new VectorXd(NGP*NGP),
 			*u_previous = new VectorXd(NGP*NGP),
 			*v_current = new VectorXd(NGP*NGP),
@@ -38,20 +31,25 @@ int main(){
 			*u_rhs = new VectorXd(NGP*NGP),
 			*v_rhs = new VectorXd(NGP*NGP),
 			*phi_rhs = new VectorXd(NGP*NGP);
+			
 	//Initialize with Taylor-Green at t=0	
 	calcTaylorGreen(*u_current,'u',0);
 	calcTaylorGreen(*u_previous,'u',0);
 	calcTaylorGreen(*v_current,'v',0);
 	calcTaylorGreen(*v_previous,'v',0);
-	
+		
 	//Update righthand-side
-	updateRHS(*u_rhs, *u_current, *u_previous, 
+	updateRHSopt(*u_rhs, *u_current, *u_previous, 
 						*v_current, *v_previous, 'u');
-	updateRHS(*v_rhs, *u_current, *u_previous, 
-						*v_current, *v_previous, 'v');	
+	updateRHSopt(*v_rhs, *u_current, *u_previous, 
+						*v_current, *v_previous, 'v');
+
 	cout << "Done!";
 	//char stop; cin >> stop;
+	
 	//Free heap
+	delete coMatMom;
+	delete coMatPoi;
 	delete u_current;
 	delete u_previous;
 	delete v_current;

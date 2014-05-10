@@ -11,8 +11,10 @@
 	typedef Eigen::Matrix< double,Eigen::Dynamic,1> VectorXd;
 	
 	//Function prototypes
-	SpMat createCoeffMat(double a,double b);
+	void createCoeffMat(SpMat &mat,double a, double b);
 	void updateRHS(VectorXd &rhs, VectorXd &ucur, VectorXd &uprev, 
 						VectorXd &vcur, VectorXd &vprev, char comp);
-	inline double interpolate(VectorXd field, int i, int j, char comp);
+	void updateRHSopt(VectorXd &rhs, VectorXd &ucur, VectorXd &uprev, 
+						VectorXd &vcur, VectorXd &vprev, char comp);
+	inline double interpolate(VectorXd &field, int i, int j, char comp);
 #endif

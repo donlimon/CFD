@@ -23,7 +23,7 @@ debug: $(OBJ)
 $(ODIR)/%.o: %.cpp $(DEPS)
 	$(CXX) -c -o $@ $< $(CPPFLAGS)
 
-release: CPPFLAGS += -O3
+release: CPPFLAGS += -O3 -DNDEBUG -ftree-vectorize -msse2
 release: $(OBJ)
 	$(CXX) -o $(BDIR)/$(BINARY) $^ $(CPPFLAGS) $(LIBS)
 
