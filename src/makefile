@@ -10,7 +10,7 @@ BDIR=../bin
 
 LIBS=
 
-_DEPS = settings.hpp matrixgen.hpp io.hpp taylorgreen.hpp testing.hpp
+_DEPS = settings.hpp matinc.hpp matrixgen.hpp io.hpp taylorgreen.hpp testing.hpp 
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
 _OBJ = main.o matrixgen.o io.o taylorgreen.o testing.o
@@ -23,7 +23,7 @@ debug: $(OBJ)
 $(ODIR)/%.o: %.cpp $(DEPS)
 	$(CXX) -c -o $@ $< $(CPPFLAGS)
 
-release: CPPFLAGS += -O3 -DNDEBUG -ftree-vectorize -msse2
+release: CPPFLAGS += -O3 -DNDEBUG -ftree-vectorize -msse2 -fopenmp
 release: $(OBJ)
 	$(CXX) -o $(BDIR)/$(BINARY) $^ $(CPPFLAGS) $(LIBS)
 

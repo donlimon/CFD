@@ -54,145 +54,35 @@ void createCoeffMat(SpMat &mat,double a, double b){
 	mat.makeCompressed();
 }
 
-void updateRHS(VectorXd &rhs, VectorXd &ucur, VectorXd &uprev, 
-						VectorXd &vcur, VectorXd &vprev, char comp){
-	double wall0 = get_wall_time();
-    double cpu0  = get_cpu_time();
-	if(comp=='u'){
-		// momentum eq. for u
-		// a*[3*H(n)-H(n-1)]+b*G(n)+I(n)
-		double  a = -1/(4*DX),
-				b = 1/(2*RE*DX*DX);
-		double Hn, Hp, Gn, In;
-		for(int j=0;j<NGP;j++){
-			for(int i=0;i<NGP;i++){
-				//first part of H and G (i+-1)
-				if(i>0 && i<(NGP-1)){
-					Hn = ucur(i+j*NGP)*(ucur((i+1)+j*NGP)-ucur((i-1)+j*NGP));
-					Hp = uprev(i+j*NGP)*(uprev((i+1)+j*NGP)-uprev((i-1)+j*NGP));
-					Gn = ucur((i+1)+j*NGP)+ucur((i-1)+j*NGP)-4*ucur(i+j*NGP);
-				}
-				else if(i==(NGP-1)){
-					Hn = ucur(i+j*NGP)*(ucur(0+j*NGP)-ucur((i-1)+j*NGP));
-					Hp = uprev(i+j*NGP)*(uprev(0+j*NGP)-uprev((i-1)+j*NGP));
-					Gn = ucur(0+j*NGP)+ucur((i-1)+j*NGP)-4*ucur(i+j*NGP);
-				}
-				else{
-					Hn = ucur(i+j*NGP)*(ucur((i+1)+j*NGP)-ucur((NGP-1)+j*NGP));
-					Hp = uprev(i+j*NGP)*(uprev((i+1)+j*NGP)-uprev((NGP-1)+j*NGP));
-					Gn = ucur((i+1)+j*NGP)+ucur((NGP-1)+j*NGP)-4*ucur(i+j*NGP);
-				}
-				//second part of H and G (j+-1)
-				if(j>0 && j<(NGP-1)){
-					Hn += interpolate(vcur,i,j,'u')*(ucur(i+(j+1)*NGP)-ucur(i+(j-1)*NGP));
-					Hp += interpolate(vprev,i,j,'u')*(uprev(i+(j+1)*NGP)-uprev(i+(j-1)*NGP));
-					Gn += ucur(i+(j+1)*NGP)+ucur(i+(j-1)*NGP);
-				}
-				else if(j==(NGP-1)){
-					Hn += interpolate(vcur,i,j,'u')*(ucur(i+0*NGP)-ucur(i+(j-1)*NGP));
-					Hp += interpolate(vprev,i,j,'u')*(uprev(i+0*NGP)-uprev(i+(j-1)*NGP));
-					Gn += ucur(i+0*NGP)+ucur(i+(j-1)*NGP);
-				}
-				else{
-					Hn += interpolate(vcur,i,j,'u')*(ucur(i+(j+1)*NGP)-ucur(i+(NGP-1)*NGP));
-					Hp += interpolate(vprev,i,j,'u')*(uprev(i+(j+1)*NGP)-uprev(i+(NGP-1)*NGP));
-					Gn += ucur(i+(j+1)*NGP)+ucur(i+(NGP-1)*NGP);
-				}
-				//calculate I and update RHS
-				In = 1/DT*ucur(i+j*NGP);
-				rhs(i+j*NGP) = a*(3*Hn-Hp)+b*Gn+In;
+void updateRHSpoi(VectorXd &rhs, VectorXd &u, VectorXd &v){
+	// poisson eq.
+	// a*(I+J)
+	double  a = -DX/(4*DT);
+	double I,J;
+	for(int j=0;j<NGP;j++){
+		for(int i=0;i<NGP;i++){
+			//I
+			if(i!=0){
+				I=u(i+j*NGP)-u((i-1)+j*NGP);
 			}
-		} 
-	}
-	else if(comp=='v'){
-		// momentum eq. for v
-		// a*[3*H(n)-H(n-1)]+b*G(n)+I(n)
-		double  a = -1/(4*DX),
-				b = 1/(2*RE*DX*DX);
-		double Hn, Hp, Gn, In;
-		for(int j=0;j<NGP;j++){
-			for(int i=0;i<NGP;i++){
-				//first part of H and G (i+-1)
-				if(i>0 && i<NGP-1){
-					//inner region
-					Hn = interpolate(ucur,i,j,'v')*(vcur((i+1)+j*NGP)-vcur((i-1)+j*NGP));
-					Hp = interpolate(uprev,i,j,'v')*(vprev((i+1)+j*NGP)-vprev((i-1)+j*NGP));
-					Gn = vcur((i+1)+j*NGP)+vcur((i-1)+j*NGP)-4*vcur(i+j*NGP);
-				}
-				else if(i==(NGP-1)){
-					//right boundary
-					Hn = interpolate(ucur,i,j,'v')*(vcur(0+j*NGP)-vcur((i-1)+j*NGP));
-					Hp = interpolate(uprev,i,j,'v')*(vprev(0+j*NGP)-vprev((i-1)+j*NGP));
-					Gn = vcur(0+j*NGP)+vcur((i-1)+j*NGP)-4*vcur(i+j*NGP);
-				}
-				else{
-					//left boundary
-					Hn = interpolate(ucur,i,j,'v')*(vcur((i+1)+j*NGP)-vcur((NGP-1)+j*NGP));
-					Hp = interpolate(uprev,i,j,'v')*(vprev((i+1)+j*NGP)-vprev((NGP-1)+j*NGP));
-					Gn = vcur((i+1)+j*NGP)+vcur((NGP-1)+j*NGP)-4*vcur(i+j*NGP);
-				}
-				//second part of H and G (j+-1)
-				if(j>0 && j<(NGP-1)){
-					//inner region
-					Hn += vcur(i+j*NGP)*(vcur(i+(j+1)*NGP)-vcur(i+(j-1)*NGP));
-					Hp += vprev(i+j*NGP)*(vprev(i+(j+1)*NGP)-vprev(i+(j-1)*NGP));
-					Gn += vcur(i+(j+1)*NGP)+vcur(i+(j-1)*NGP);
-				}
-				else if(j==(NGP-1)){
-					//upper boundary
-					Hn += vcur(i+j*NGP)*(vcur(i+0*NGP)-vcur(i+(j-1)*NGP));
-					Hp += vprev(i+j*NGP)*(vprev(i+0*NGP)-vprev(i+(j-1)*NGP));
-					Gn += vcur(i+0*NGP)+vcur(i+(j-1)*NGP);
-				}
-				else{
-					//lower boundary
-					Hn += vcur(i+j*NGP)*(vcur(i+(j+1)*NGP)-vcur(i+(NGP-1)*NGP));
-					Hp += vprev(i+j*NGP)*(vprev(i+(j+1)*NGP)-vprev(i+(NGP-1)*NGP));
-					Gn += vcur(i+(j+1)*NGP)+vcur(i+(NGP-1)*NGP);
-				}
-				//calculate I and update RHS
-				In = 1/DT*vcur(i+j*NGP);
-				rhs(i+j*NGP) = a*(3*Hn-Hp)+b*Gn+In;
+			else{
+				I=u(i+j*NGP)-u((NGP-1)+j*NGP);
 			}
-		} 
-	}
-	else if(comp=='p'){
-		// poisson eq.
-		// a*(I+J)
-		double  a = -DX/(4*DT);
-		double I,J;
-		for(int j=0;j<NGP;j++){
-			for(int i=0;i<NGP;i++){
-				//I
-				if(i==0){
-					I=ucur(i+j*NGP)-ucur((NGP-1)+j*NGP);
-				}
-				else{
-					I=ucur(i+j*NGP)-ucur((i-1)+j*NGP);
-				}
-				//J
-				if(j==0){
-					J=vcur(i+j*NGP)-vcur(i+(NGP-1)*NGP);
-				}
-				else{
-					J=vcur(i+j*NGP)-vcur(i+(j-1)*NGP);
-				}
-				//update RHS
-				rhs(i+j*NGP) = a*(I+J);
+			//J
+			if(j!=0){
+				J=v(i+j*NGP)-v(i+(j-1)*NGP);
 			}
-		} 
-	}
-	double wall1 = get_wall_time();
-    double cpu1  = get_cpu_time();
-	cout << "Update normal" << endl;
-    cout << "Wall Time = " << wall1 - wall0 << endl;
-    cout << "CPU Time  = " << cpu1  - cpu0  << endl;
+			else{
+				J=v(i+j*NGP)-v(i+(NGP-1)*NGP);
+			}
+			//update RHS
+			rhs(i+j*NGP) = a*(I+J);
+		}
+	} 
 }
 
-void updateRHSopt(VectorXd &rhs, VectorXd &ucur, VectorXd &uprev, 
+void updateRHSmom(VectorXd &rhs, VectorXd &ucur, VectorXd &uprev, 
 						VectorXd &vcur, VectorXd &vprev, char comp){
-	double wall0 = get_wall_time();
-    double cpu0  = get_cpu_time();
 	if(comp=='u'){
 		// momentum eq. for u
 		// a*[3*H(n)-H(n-1)]+b*G(n)+I(n)
@@ -402,37 +292,6 @@ void updateRHSopt(VectorXd &rhs, VectorXd &ucur, VectorXd &uprev,
 			}
 		}
 	}
-	else if(comp=='p'){
-		// poisson eq.
-		// a*(I+J)
-		double  a = -DX/(4*DT);
-		double I,J;
-		for(int j=0;j<NGP;j++){
-			for(int i=0;i<NGP;i++){
-				//I
-				if(i!=0){
-					I=ucur(i+j*NGP)-ucur((i-1)+j*NGP);
-				}
-				else{
-					I=ucur(i+j*NGP)-ucur((NGP-1)+j*NGP);
-				}
-				//J
-				if(j!=0){
-					J=vcur(i+j*NGP)-vcur(i+(j-1)*NGP);
-				}
-				else{
-					J=vcur(i+j*NGP)-vcur(i+(NGP-1)*NGP);
-				}
-				//update RHS
-				rhs(i+j*NGP) = a*(I+J);
-			}
-		} 
-	}
-	double wall1 = get_wall_time();
-    double cpu1  = get_cpu_time();
-	cout << "Update opt" << endl;
-    cout << "Wall Time = " << wall1 - wall0 << endl;
-    cout << "CPU Time  = " << cpu1  - cpu0  << endl;
 }
 
 inline double interpolate(VectorXd &field, int i, int j, char comp){

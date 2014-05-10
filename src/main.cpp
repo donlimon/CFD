@@ -4,6 +4,7 @@
 //author: Michael Stumpf
 
 #include <iostream>
+#include <Eigen/SparseCholesky> //solver
 #include <settings.hpp>
 #include <matrixgen.hpp>
 #include <io.hpp>
@@ -12,6 +13,7 @@
 #include <testing.hpp>
 
 using namespace std;
+using namespace Eigen;
 
 int main(){
 	printSettings();
@@ -25,12 +27,12 @@ int main(){
 	//Allocate memory
 	VectorXd *u_current = new VectorXd(NGP*NGP),
 			*u_previous = new VectorXd(NGP*NGP),
+			*u_prelim = new VectorXd(NGP*NGP),
 			*v_current = new VectorXd(NGP*NGP),
 			*v_previous = new VectorXd(NGP*NGP),
-			*phi_current = new VectorXd(NGP*NGP),
-			*u_rhs = new VectorXd(NGP*NGP),
-			*v_rhs = new VectorXd(NGP*NGP),
-			*phi_rhs = new VectorXd(NGP*NGP);
+			*v_prelim = new VectorXd(NGP*NGP),
+			*phi = new VectorXd(NGP*NGP),
+			*rhs = new VectorXd(NGP*NGP);
 			
 	//Initialize with Taylor-Green at t=0	
 	calcTaylorGreen(*u_current,'u',0);
@@ -39,10 +41,29 @@ int main(){
 	calcTaylorGreen(*v_previous,'v',0);
 		
 	//Update righthand-side
-	updateRHSopt(*u_rhs, *u_current, *u_previous, 
+
+	//Solve equations
+	SimplicialLDLT<SparseMatrix<double> > solver;
+	solver.analyzePattern(*coMatMom);	//Pattern is equal for poisson and momentum eq.
+	for(int ts=0;ts<TSMAX;ts++){
+		//Solve momentum eq.
+		solver.factorize(*coMatMom);
+		//Solve for u*
+		updateRHSmom(*rhs, *u_current, *u_previous, 
 						*v_current, *v_previous, 'u');
-	updateRHSopt(*v_rhs, *u_current, *u_previous, 
+		*u_prelim = solver.solve(*rhs);
+		//calcError(*coMatMom,*u_prelim,*rhs);
+		//Solve for v*
+		updateRHSmom(*rhs, *u_current, *u_previous, 
 						*v_current, *v_previous, 'v');
+		*v_prelim = solver.solve(*rhs);
+		//calcError(*coMatMom,*v_prelim,*rhs);
+		//Solve poisson eq.
+		solver.factorize(*coMatPoi);
+		updateRHSpoi(*rhs, *u_prelim, *v_prelim);
+		*phi = solver.solve(*rhs);
+		//calcError(*coMatPoi,*phi,*rhs);
+	}
 
 	cout << "Done!";
 	//char stop; cin >> stop;
@@ -52,12 +73,12 @@ int main(){
 	delete coMatPoi;
 	delete u_current;
 	delete u_previous;
+	delete u_prelim;
 	delete v_current;
 	delete v_previous;
-	delete phi_current;
-	delete u_rhs;
-	delete v_rhs;
-	delete phi_rhs;
+	delete v_prelim;
+	delete phi;
+	delete rhs;
 	
 	return 0;
 }

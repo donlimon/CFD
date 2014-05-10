@@ -4,11 +4,9 @@
 
 #ifndef _TESTING_ 
 #define _TESTING_
-	#include <matrixgen.hpp>
-	void fillVector(VectorXd &vector);
-	void testVector(VectorXd &vec);
-	void testArray(double* vec);
+	#include <matinc.hpp>
 	double get_wall_time();
 	double get_cpu_time();
+	void calcError(SpMat &A, VectorXd &x, VectorXd &b);
 	void compareVec(VectorXd &vec1, VectorXd &vec2);
 #endif

@@ -4,6 +4,6 @@
 
 #ifndef _TAYLORGREEN_ 
 #define _TAYLORGREEN_
-	#include <matrixgen.hpp>
+	#include <matinc.hpp>
 	void calcTaylorGreen(VectorXd &velocity,char comp,double t);
 #endif
