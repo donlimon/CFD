@@ -339,3 +339,28 @@ inline double interpolate(VectorXd &field, int i, int j, char comp){
 		return 0;
 	}
 }
+
+void solveCorrector(VectorXd &velcur, VectorXd &velpre, VectorXd &phi, char comp){
+	//v(n+1) = v* - a*[phi(i+1)-phi(i)]
+	double a = DT/DX;
+	if(comp=='u'){
+		for(int j=0;j<NGP;j++){
+			for(int i=0;i<NGP-1;i++){
+				velcur(i+j*NGP) = velpre(i+j*NGP)
+									-a*(phi(i+1+j*NGP)-phi(i+j*NGP));
+			}
+			velcur(NGP-1+j*NGP) = velpre(NGP-1+j*NGP)
+									-a*(phi(0+j*NGP)-phi(NGP-1+j*NGP));
+		}
+	}
+	else if(comp=='v'){
+		for(int i=0;i<NGP;i++){
+			for(int j=0;j<NGP-1;j++){
+				velcur(i+j*NGP) = velpre(i+j*NGP)
+									-a*(phi(i+(j+1)*NGP)-phi(i+j*NGP));
+			}
+			velcur(i+(NGP-1)*NGP) = velpre(i+(NGP-1)*NGP)
+									-a*(phi(i)-phi(i+(NGP-1)*NGP));
+		}
+	}
+}

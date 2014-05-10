@@ -5,4 +5,5 @@
 #ifndef _IOFUNC_ 
 #define _IOFUNC_
 	void printSettings();	//Print settings from settings.hpp on screen
+	void printProgress(int ts); //Prints progress on screen
 #endif

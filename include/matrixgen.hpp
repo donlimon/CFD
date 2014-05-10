@@ -12,5 +12,7 @@
 	void updateRHSmom(VectorXd &rhs, VectorXd &ucur, VectorXd &uprev, 
 						VectorXd &vcur, VectorXd &vprev, char comp);
 	void updateRHSpoi(VectorXd &rhs, VectorXd &u, VectorXd &v);
+	void solveCorrector(VectorXd &velcur, VectorXd &velpre, 
+						VectorXd &phi, char comp);
 	inline double interpolate(VectorXd &field, int i, int j, char comp);
 #endif

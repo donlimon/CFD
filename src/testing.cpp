@@ -23,7 +23,7 @@ double get_cpu_time(){
     return (double)clock() / CLOCKS_PER_SEC;
 }
 
-void calcError(SpMat &A, VectorXd &x, VectorXd &b){
+void calcErrorSolve(SpMat &A, VectorXd &x, VectorXd &b){
 	double relative_error = (A*x - b).norm() / b.norm(); // norm() is L2 norm
 	cout << "The relative error is:\n" << relative_error << endl;
 }

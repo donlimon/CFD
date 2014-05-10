@@ -2,6 +2,7 @@
 //file: taylorgreen.cpp
 //author: Michael Stumpf
 
+#include <iostream>
 #include <cmath>
 #include <taylorgreen.hpp>
 #include <settings.hpp>
@@ -32,4 +33,18 @@ void calcTaylorGreen(VectorXd &velocity,char comp,double t){
 			}
 		}
 	}
+}
+
+void calcTaylorError(VectorXd &u, VectorXd &v){
+	VectorXd *u_tg = new VectorXd(NGP*NGP),
+			*v_tg = new VectorXd(NGP*NGP);
+	calcTaylorGreen(*u_tg,'u',TSMAX*DT);
+	calcTaylorGreen(*v_tg,'v',TSMAX*DT);
+	double relative_error_u = (u - *u_tg).norm() / v_tg->norm();
+	double relative_error_v = (v - *v_tg).norm() / v_tg->norm();
+	cout << "Relative error at time step #" << TSMAX << endl
+		 << "velocity u: " << relative_error_u << endl
+		 << "velocity v: " << relative_error_v << endl;
+	delete u_tg;
+	delete v_tg;
 }

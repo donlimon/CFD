@@ -6,4 +6,5 @@
 #define _TAYLORGREEN_
 	#include <matinc.hpp>
 	void calcTaylorGreen(VectorXd &velocity,char comp,double t);
+	void calcTaylorError(VectorXd &u, VectorXd &v);
 #endif

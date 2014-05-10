@@ -46,26 +46,37 @@ int main(){
 	SimplicialLDLT<SparseMatrix<double> > solver;
 	solver.analyzePattern(*coMatMom);	//Pattern is equal for poisson and momentum eq.
 	for(int ts=0;ts<TSMAX;ts++){
+		printProgress(ts);
 		//Solve momentum eq.
 		solver.factorize(*coMatMom);
 		//Solve for u*
 		updateRHSmom(*rhs, *u_current, *u_previous, 
 						*v_current, *v_previous, 'u');
 		*u_prelim = solver.solve(*rhs);
-		//calcError(*coMatMom,*u_prelim,*rhs);
 		//Solve for v*
 		updateRHSmom(*rhs, *u_current, *u_previous, 
 						*v_current, *v_previous, 'v');
 		*v_prelim = solver.solve(*rhs);
-		//calcError(*coMatMom,*v_prelim,*rhs);
 		//Solve poisson eq.
 		solver.factorize(*coMatPoi);
 		updateRHSpoi(*rhs, *u_prelim, *v_prelim);
 		*phi = solver.solve(*rhs);
-		//calcError(*coMatPoi,*phi,*rhs);
+		
+		//shift time levels
+		delete u_previous;
+		delete v_previous;
+		u_previous = u_current;
+		v_previous = v_current;
+		u_current = new VectorXd(NGP*NGP);
+		v_current = new VectorXd(NGP*NGP);
+		
+		//solve corrector equation
+		solveCorrector(*u_current,*u_prelim,*phi,'u');
+		solveCorrector(*v_current,*v_prelim,*phi,'v');
 	}
+	calcTaylorError(*u_current,*v_current);
 
-	cout << "Done!";
+	cout << "Done!" << endl;
 	//char stop; cin >> stop;
 	
 	//Free heap
