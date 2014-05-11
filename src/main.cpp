@@ -17,7 +17,7 @@ using namespace Eigen;
 
 int main(){
 	printSettings();
-	
+	double cpuTime0 = get_cpu_time();
 	//coefficient matrix for momentum/poisson eq.
 	SpMat* coMatMom = new SpMat(NGP*NGP,NGP*NGP);
 	SpMat* coMatPoi = new SpMat(NGP*NGP,NGP*NGP);
@@ -39,28 +39,28 @@ int main(){
 	calcTaylorGreen(*u_previous,'u',0);
 	calcTaylorGreen(*v_current,'v',0);
 	calcTaylorGreen(*v_previous,'v',0);
-		
-	//Update righthand-side
 
 	//Solve equations
-	SimplicialLDLT<SparseMatrix<double> > solver;
-	solver.analyzePattern(*coMatMom);	//Pattern is equal for poisson and momentum eq.
+	SimplicialLDLT<SparseMatrix<double> > solverMom;
+	solverMom.analyzePattern(*coMatMom);	
+	solverMom.factorize(*coMatMom);
+	SimplicialLDLT<SparseMatrix<double> > solverPoi;
+	solverPoi.analyzePattern(*coMatPoi);
+	solverPoi.factorize(*coMatPoi);
 	for(int ts=0;ts<TSMAX;ts++){
 		printProgress(ts);
 		//Solve momentum eq.
-		solver.factorize(*coMatMom);
 		//Solve for u*
 		updateRHSmom(*rhs, *u_current, *u_previous, 
 						*v_current, *v_previous, 'u');
-		*u_prelim = solver.solve(*rhs);
+		*u_prelim = solverMom.solve(*rhs);
 		//Solve for v*
 		updateRHSmom(*rhs, *u_current, *u_previous, 
 						*v_current, *v_previous, 'v');
-		*v_prelim = solver.solve(*rhs);
+		*v_prelim = solverMom.solve(*rhs);
 		//Solve poisson eq.
-		solver.factorize(*coMatPoi);
 		updateRHSpoi(*rhs, *u_prelim, *v_prelim);
-		*phi = solver.solve(*rhs);
+		*phi = solverPoi.solve(*rhs);
 		
 		//shift time levels
 		delete u_previous;
@@ -90,6 +90,6 @@ int main(){
 	delete v_prelim;
 	delete phi;
 	delete rhs;
-	
+	cout << "CPU time: " << get_cpu_time()-cpuTime0 << endl;
 	return 0;
 }
