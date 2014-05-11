@@ -3,6 +3,7 @@
 //author: Michael Stumpf
 
 #include <iostream>
+#include <omp.h>
 #include <settings.hpp>
 #include <matrixgen.hpp>
 #include <testing.hpp>
@@ -57,26 +58,30 @@ void createCoeffMat(SpMat &mat,double a, double b){
 void updateRHSpoi(VectorXd &rhs, VectorXd &u, VectorXd &v){
 	// poisson eq.
 	// a*(I+J)
-	double  a = -DX/(4*DT);
-	double I,J;
-	for(int j=0;j<NGP;j++){
-		for(int i=0;i<NGP;i++){
-			//I
-			if(i!=0){
-				I=u(i+j*NGP)-u((i-1)+j*NGP);
+	#pragma omp parallel
+	{
+		double  a = -DX/(4*DT);
+		double I,J;
+		#pragma omp for
+		for(int j=0;j<NGP;j++){
+			for(int i=0;i<NGP;i++){
+				//I
+				if(i!=0){
+					I=u(i+j*NGP)-u((i-1)+j*NGP);
+				}
+				else{
+					I=u(i+j*NGP)-u((NGP-1)+j*NGP);
+				}
+				//J
+				if(j!=0){
+					J=v(i+j*NGP)-v(i+(j-1)*NGP);
+				}
+				else{
+					J=v(i+j*NGP)-v(i+(NGP-1)*NGP);
+				}
+				//update RHS
+				rhs(i+j*NGP) = a*(I+J);
 			}
-			else{
-				I=u(i+j*NGP)-u((NGP-1)+j*NGP);
-			}
-			//J
-			if(j!=0){
-				J=v(i+j*NGP)-v(i+(j-1)*NGP);
-			}
-			else{
-				J=v(i+j*NGP)-v(i+(NGP-1)*NGP);
-			}
-			//update RHS
-			rhs(i+j*NGP) = a*(I+J);
 		}
 	} 
 }
@@ -89,53 +94,9 @@ void updateRHSmom(VectorXd &rhs, VectorXd &ucur, VectorXd &uprev,
 		double  a = -1/(4*DX),
 				b = 1/(2*RE*DX*DX);
 		double Hn, Hp, Gn, In;
-		
+
 		double i_up=NGP-1;
 		double j_up=NGP-1;
-		//lower boundary (j=0)  [no corner points]
-		for(int i=1;i<(NGP-1);i++){
-			Hn = ucur(i)*(ucur(i+1)-ucur(i-1))
-				+interpolate(vcur,i,0,'u')*(ucur(i+NGP)-ucur(i+(NGP-1)*NGP));
-			Hp = uprev(i)*(uprev(i+1)-uprev(i-1))
-				+interpolate(vprev,i,0,'u')*(uprev(i+NGP)-uprev(i+(NGP-1)*NGP));
-			Gn = ucur(i+1)+ucur(i-1)-4*ucur(i)
-				+ucur(i+NGP)+ucur(i+(NGP-1)*NGP);
-			In = 1/DT*ucur(i);
-			rhs(i) = a*(3*Hn-Hp)+b*Gn+In;
-		}
-		//upper boundary (j=NGP-1) [no corner points]
-		for(int i=1;i<(NGP-1);i++){
-			Hn = ucur(i+j_up*NGP)*(ucur(i+1+j_up*NGP)-ucur(i-1+j_up*NGP))
-				+interpolate(vcur,i,j_up,'u')*(ucur(i)-ucur(i+(j_up-1)*NGP));
-			Hp = uprev(i+j_up*NGP)*(uprev(i+1+j_up*NGP)-uprev(i-1+j_up*NGP))
-				+interpolate(vprev,i,j_up,'u')*(uprev(i)-uprev(i+(j_up-1)*NGP));
-			Gn = ucur(i+1+j_up*NGP)+ucur(i-1+j_up*NGP)-4*ucur(i+j_up*NGP)
-				+ucur(i)+ucur(i+(j_up-1)*NGP);
-			In = 1/DT*ucur(i+j_up*NGP);
-			rhs(i+j_up*NGP) = a*(3*Hn-Hp)+b*Gn+In;
-		}
-		//left boundary (i=0) [no corner points]
-		for(int j=1;j<(NGP-1);j++){
-			Hn = ucur(j*NGP)*(ucur(1+j*NGP)-ucur((NGP-1)+j*NGP))
-				+interpolate(vcur,0,j,'u')*(ucur((j+1)*NGP)-ucur((j-1)*NGP));
-			Hp = uprev(j*NGP)*(uprev(1+j*NGP)-uprev((NGP-1)+j*NGP))
-				+interpolate(vprev,0,j,'u')*(uprev((j+1)*NGP)-uprev((j-1)*NGP));
-			Gn = ucur(1+j*NGP)+ucur((NGP-1)+j*NGP)-4*ucur(j*NGP)
-				+ucur((j+1)*NGP)+ucur((j-1)*NGP);
-			In = 1/DT*ucur(j*NGP);
-			rhs(j*NGP) = a*(3*Hn-Hp)+b*Gn+In;
-		}
-		//right boundary (i=NGP-1) [no corner points]
-		for(int j=1;j<(NGP-1);j++){
-			Hn = ucur(i_up+j*NGP)*(ucur(j*NGP)-ucur((i_up-1)+j*NGP))
-				+interpolate(vcur,i_up,j,'u')*(ucur(i_up+(j+1)*NGP)-ucur(i_up+(j-1)*NGP));
-			Hp = uprev(i_up+j*NGP)*(uprev(j*NGP)-uprev((i_up-1)+j*NGP))
-				+interpolate(vprev,i_up,j,'u')*(uprev(i_up+(j+1)*NGP)-uprev(i_up+(j-1)*NGP));
-			Gn = ucur(j*NGP)+ucur((i_up-1)+j*NGP)-4*ucur(i_up+j*NGP)
-				+ucur(i_up+(j+1)*NGP)+ucur(i_up+(j-1)*NGP);
-			In = 1/DT*ucur(i_up+j*NGP);
-			rhs(i_up+j*NGP) = a*(3*Hn-Hp)+b*Gn+In;
-		}
 		//corner points
 		//i=0,j=0
 		Hn = ucur(0)*(ucur(1)-ucur(NGP-1))
@@ -173,19 +134,71 @@ void updateRHSmom(VectorXd &rhs, VectorXd &ucur, VectorXd &uprev,
 			+ucur(i_up)+ucur(i_up+(j_up-1)*NGP);
 		In = 1/DT*ucur(i_up+j_up*NGP);
 		rhs(i_up+j_up*NGP) = a*(3*Hn-Hp)+b*Gn+In;
-		//inner region
-		for(int j=1;j<NGP-1;j++){
-			for(int i=1;i<NGP-1;i++){
-				Hn = ucur(i+j*NGP)*(ucur((i+1)+j*NGP)-ucur((i-1)+j*NGP))
-					+interpolate(vcur,i,j,'u')*(ucur(i+(j+1)*NGP)-ucur(i+(j-1)*NGP));
-				Hp = uprev(i+j*NGP)*(uprev((i+1)+j*NGP)-uprev((i-1)+j*NGP))
-					+interpolate(vprev,i,j,'u')*(uprev(i+(j+1)*NGP)-uprev(i+(j-1)*NGP));
-				Gn = ucur((i+1)+j*NGP)+ucur((i-1)+j*NGP)-4*ucur(i+j*NGP)
-					+ucur(i+(j+1)*NGP)+ucur(i+(j-1)*NGP);
-				In = 1/DT*ucur(i+j*NGP);
-				rhs(i+j*NGP) = a*(3*Hn-Hp)+b*Gn+In;
+		//lower boundary (j=0)  [no corner points]
+		#pragma omp parallel
+		{
+			#pragma omp for private(Hn,Hp,Gn,In)
+			for(int i=1;i<(NGP-1);i++){
+				Hn = ucur(i)*(ucur(i+1)-ucur(i-1))
+					+interpolate(vcur,i,0,'u')*(ucur(i+NGP)-ucur(i+(NGP-1)*NGP));
+				Hp = uprev(i)*(uprev(i+1)-uprev(i-1))
+					+interpolate(vprev,i,0,'u')*(uprev(i+NGP)-uprev(i+(NGP-1)*NGP));
+				Gn = ucur(i+1)+ucur(i-1)-4*ucur(i)
+					+ucur(i+NGP)+ucur(i+(NGP-1)*NGP);
+				In = 1/DT*ucur(i);
+				rhs(i) = a*(3*Hn-Hp)+b*Gn+In;
 			}
-		} 
+			//upper boundary (j=NGP-1) [no corner points]
+			#pragma omp for private(Hn,Hp,Gn,In)
+			for(int i=1;i<(NGP-1);i++){
+				Hn = ucur(i+j_up*NGP)*(ucur(i+1+j_up*NGP)-ucur(i-1+j_up*NGP))
+					+interpolate(vcur,i,j_up,'u')*(ucur(i)-ucur(i+(j_up-1)*NGP));
+				Hp = uprev(i+j_up*NGP)*(uprev(i+1+j_up*NGP)-uprev(i-1+j_up*NGP))
+					+interpolate(vprev,i,j_up,'u')*(uprev(i)-uprev(i+(j_up-1)*NGP));
+				Gn = ucur(i+1+j_up*NGP)+ucur(i-1+j_up*NGP)-4*ucur(i+j_up*NGP)
+					+ucur(i)+ucur(i+(j_up-1)*NGP);
+				In = 1/DT*ucur(i+j_up*NGP);
+				rhs(i+j_up*NGP) = a*(3*Hn-Hp)+b*Gn+In;
+			}
+			//left boundary (i=0) [no corner points]
+			#pragma omp for private(Hn,Hp,Gn,In)
+			for(int j=1;j<(NGP-1);j++){
+				Hn = ucur(j*NGP)*(ucur(1+j*NGP)-ucur((NGP-1)+j*NGP))
+					+interpolate(vcur,0,j,'u')*(ucur((j+1)*NGP)-ucur((j-1)*NGP));
+				Hp = uprev(j*NGP)*(uprev(1+j*NGP)-uprev((NGP-1)+j*NGP))
+					+interpolate(vprev,0,j,'u')*(uprev((j+1)*NGP)-uprev((j-1)*NGP));
+				Gn = ucur(1+j*NGP)+ucur((NGP-1)+j*NGP)-4*ucur(j*NGP)
+					+ucur((j+1)*NGP)+ucur((j-1)*NGP);
+				In = 1/DT*ucur(j*NGP);
+				rhs(j*NGP) = a*(3*Hn-Hp)+b*Gn+In;
+			}
+			//right boundary (i=NGP-1) [no corner points]
+			#pragma omp for private(Hn,Hp,Gn,In)
+			for(int j=1;j<(NGP-1);j++){
+				Hn = ucur(i_up+j*NGP)*(ucur(j*NGP)-ucur((i_up-1)+j*NGP))
+					+interpolate(vcur,i_up,j,'u')*(ucur(i_up+(j+1)*NGP)-ucur(i_up+(j-1)*NGP));
+				Hp = uprev(i_up+j*NGP)*(uprev(j*NGP)-uprev((i_up-1)+j*NGP))
+					+interpolate(vprev,i_up,j,'u')*(uprev(i_up+(j+1)*NGP)-uprev(i_up+(j-1)*NGP));
+				Gn = ucur(j*NGP)+ucur((i_up-1)+j*NGP)-4*ucur(i_up+j*NGP)
+					+ucur(i_up+(j+1)*NGP)+ucur(i_up+(j-1)*NGP);
+				In = 1/DT*ucur(i_up+j*NGP);
+				rhs(i_up+j*NGP) = a*(3*Hn-Hp)+b*Gn+In;
+			}
+			//inner region
+			#pragma omp for private(Hn,Hp,Gn,In)
+			for(int j=1;j<NGP-1;j++){
+				for(int i=1;i<NGP-1;i++){
+					Hn = ucur(i+j*NGP)*(ucur((i+1)+j*NGP)-ucur((i-1)+j*NGP))
+						+interpolate(vcur,i,j,'u')*(ucur(i+(j+1)*NGP)-ucur(i+(j-1)*NGP));
+					Hp = uprev(i+j*NGP)*(uprev((i+1)+j*NGP)-uprev((i-1)+j*NGP))
+						+interpolate(vprev,i,j,'u')*(uprev(i+(j+1)*NGP)-uprev(i+(j-1)*NGP));
+					Gn = ucur((i+1)+j*NGP)+ucur((i-1)+j*NGP)-4*ucur(i+j*NGP)
+						+ucur(i+(j+1)*NGP)+ucur(i+(j-1)*NGP);
+					In = 1/DT*ucur(i+j*NGP);
+					rhs(i+j*NGP) = a*(3*Hn-Hp)+b*Gn+In;
+				}
+			} 
+		}
 	}
 	else if(comp=='v'){
 		// momentum eq. for v
@@ -193,53 +206,9 @@ void updateRHSmom(VectorXd &rhs, VectorXd &ucur, VectorXd &uprev,
 		double  a = -1/(4*DX),
 				b = 1/(2*RE*DX*DX);
 		double Hn, Hp, Gn, In;
-		
+
 		double i_up=NGP-1;
 		double j_up=NGP-1;
-		//lower boundary (j=0)  [no corner points]
-		for(int i=1;i<(NGP-1);i++){
-			Hn = interpolate(ucur,i,0,'v')*(vcur(i+1)-vcur(i-1))
-				+vcur(i)*(vcur(i+NGP)-vcur(i+(NGP-1)*NGP));
-			Hp = interpolate(uprev,i,0,'v')*(vprev(i+1)-vprev(i-1))
-				+vprev(i)*(vprev(i+NGP)-vprev(i+(NGP-1)*NGP));
-			Gn = vcur(i+1)+vcur(i-1)-4*vcur(i)
-				+vcur(i+NGP)+vcur(i+(NGP-1)*NGP);
-			In = 1/DT*vcur(i);
-			rhs(i) = a*(3*Hn-Hp)+b*Gn+In;
-		}
-		//upper boundary (j=NGP-1) [no corner points]
-		for(int i=1;i<(NGP-1);i++){
-			Hn = interpolate(ucur,i,j_up,'v')*(vcur(i+1+j_up*NGP)-vcur(i-1+j_up*NGP))
-				+vcur(i+j_up*NGP)*(vcur(i)-vcur(i+(j_up-1)*NGP));
-			Hp = interpolate(uprev,i,j_up,'v')*(vprev(i+1+j_up*NGP)-vprev(i-1+j_up*NGP))
-				+vprev(i+j_up*NGP)*(vprev(i)-vprev(i+(j_up-1)*NGP));
-			Gn = vcur(i+1+j_up*NGP)+vcur(i-1+j_up*NGP)-4*vcur(i+j_up*NGP)
-				+vcur(i)+vcur(i+(j_up-1)*NGP);
-			In = 1/DT*vcur(i+j_up*NGP);
-			rhs(i+j_up*NGP) = a*(3*Hn-Hp)+b*Gn+In;
-		}
-		//left boundary (i=0) [no corner points]
-		for(int j=1;j<(NGP-1);j++){
-			Hn = interpolate(ucur,0,j,'v')*(vcur(1+j*NGP)-vcur((NGP-1)+j*NGP))
-				+vcur(j*NGP)*(vcur((j+1)*NGP)-vcur((j-1)*NGP));
-			Hp = interpolate(uprev,0,j,'v')*(vprev(1+j*NGP)-vprev((NGP-1)+j*NGP))
-				+vprev(j*NGP)*(vprev((j+1)*NGP)-vprev((j-1)*NGP));
-			Gn = vcur(1+j*NGP)+vcur((NGP-1)+j*NGP)-4*vcur(j*NGP)
-				+vcur((j+1)*NGP)+vcur((j-1)*NGP);
-			In = 1/DT*vcur(j*NGP);
-			rhs(j*NGP) = a*(3*Hn-Hp)+b*Gn+In;
-		}
-		//right boundary (i=NGP-1) [no corner points]
-		for(int j=1;j<(NGP-1);j++){
-			Hn = interpolate(ucur,i_up,j,'v')*(vcur(j*NGP)-vcur((i_up-1)+j*NGP))
-				+vcur(i_up+j*NGP)*(vcur(i_up+(j+1)*NGP)-vcur(i_up+(j-1)*NGP));
-			Hp = interpolate(uprev,i_up,j,'v')*(vprev(j*NGP)-vprev((i_up-1)+j*NGP))
-				+vprev(i_up+j*NGP)*(vprev(i_up+(j+1)*NGP)-vprev(i_up+(j-1)*NGP));
-			Gn = vcur(j*NGP)+vcur((i_up-1)+j*NGP)-4*vcur(i_up+j*NGP)
-				+vcur(i_up+(j+1)*NGP)+vcur(i_up+(j-1)*NGP);
-			In = 1/DT*vcur(i_up+j*NGP);
-			rhs(i_up+j*NGP) = a*(3*Hn-Hp)+b*Gn+In;
-		}
 		//corner points
 		//i=0,j=0
 		Hn = interpolate(ucur,0,0,'v')*(vcur(1)-vcur(NGP-1))
@@ -277,22 +246,74 @@ void updateRHSmom(VectorXd &rhs, VectorXd &ucur, VectorXd &uprev,
 			+vcur(i_up)+vcur(i_up+(j_up-1)*NGP);
 		In = 1/DT*vcur(i_up+j_up*NGP);
 		rhs(i_up+j_up*NGP) = a*(3*Hn-Hp)+b*Gn+In;
-
-		
-		for(int j=1;j<NGP-1;j++){
-			for(int i=1;i<NGP-1;i++){
-				Hn = interpolate(ucur,i,j,'v')*(vcur((i+1)+j*NGP)-vcur((i-1)+j*NGP))
-					+vcur(i+j*NGP)*(vcur(i+(j+1)*NGP)-vcur(i+(j-1)*NGP));
-				Hp = interpolate(uprev,i,j,'v')*(vprev((i+1)+j*NGP)-vprev((i-1)+j*NGP))
-					+vprev(i+j*NGP)*(vprev(i+(j+1)*NGP)-vprev(i+(j-1)*NGP));
-				Gn = vcur((i+1)+j*NGP)+vcur((i-1)+j*NGP)-4*vcur(i+j*NGP)
-					+vcur(i+(j+1)*NGP)+vcur(i+(j-1)*NGP);
-				In = 1/DT*vcur(i+j*NGP);
-				rhs(i+j*NGP) = a*(3*Hn-Hp)+b*Gn+In;
+		#pragma omp parallel
+		{
+			//lower boundary (j=0)  [no corner points]
+			#pragma omp for private(Hn,Hp,Gn,In)
+			for(int i=1;i<(NGP-1);i++){
+				Hn = interpolate(ucur,i,0,'v')*(vcur(i+1)-vcur(i-1))
+					+vcur(i)*(vcur(i+NGP)-vcur(i+(NGP-1)*NGP));
+				Hp = interpolate(uprev,i,0,'v')*(vprev(i+1)-vprev(i-1))
+					+vprev(i)*(vprev(i+NGP)-vprev(i+(NGP-1)*NGP));
+				Gn = vcur(i+1)+vcur(i-1)-4*vcur(i)
+					+vcur(i+NGP)+vcur(i+(NGP-1)*NGP);
+				In = 1/DT*vcur(i);
+				rhs(i) = a*(3*Hn-Hp)+b*Gn+In;
+			}
+			//upper boundary (j=NGP-1) [no corner points]
+			#pragma omp for private(Hn,Hp,Gn,In)
+			for(int i=1;i<(NGP-1);i++){
+				Hn = interpolate(ucur,i,j_up,'v')*(vcur(i+1+j_up*NGP)-vcur(i-1+j_up*NGP))
+					+vcur(i+j_up*NGP)*(vcur(i)-vcur(i+(j_up-1)*NGP));
+				Hp = interpolate(uprev,i,j_up,'v')*(vprev(i+1+j_up*NGP)-vprev(i-1+j_up*NGP))
+					+vprev(i+j_up*NGP)*(vprev(i)-vprev(i+(j_up-1)*NGP));
+				Gn = vcur(i+1+j_up*NGP)+vcur(i-1+j_up*NGP)-4*vcur(i+j_up*NGP)
+					+vcur(i)+vcur(i+(j_up-1)*NGP);
+				In = 1/DT*vcur(i+j_up*NGP);
+				rhs(i+j_up*NGP) = a*(3*Hn-Hp)+b*Gn+In;
+			}
+			//left boundary (i=0) [no corner points]
+			#pragma omp for private(Hn,Hp,Gn,In)
+			for(int j=1;j<(NGP-1);j++){
+				Hn = interpolate(ucur,0,j,'v')*(vcur(1+j*NGP)-vcur((NGP-1)+j*NGP))
+					+vcur(j*NGP)*(vcur((j+1)*NGP)-vcur((j-1)*NGP));
+				Hp = interpolate(uprev,0,j,'v')*(vprev(1+j*NGP)-vprev((NGP-1)+j*NGP))
+					+vprev(j*NGP)*(vprev((j+1)*NGP)-vprev((j-1)*NGP));
+				Gn = vcur(1+j*NGP)+vcur((NGP-1)+j*NGP)-4*vcur(j*NGP)
+					+vcur((j+1)*NGP)+vcur((j-1)*NGP);
+				In = 1/DT*vcur(j*NGP);
+				rhs(j*NGP) = a*(3*Hn-Hp)+b*Gn+In;
+			}
+			//right boundary (i=NGP-1) [no corner points]
+			#pragma omp for private(Hn,Hp,Gn,In)
+			for(int j=1;j<(NGP-1);j++){
+				Hn = interpolate(ucur,i_up,j,'v')*(vcur(j*NGP)-vcur((i_up-1)+j*NGP))
+					+vcur(i_up+j*NGP)*(vcur(i_up+(j+1)*NGP)-vcur(i_up+(j-1)*NGP));
+				Hp = interpolate(uprev,i_up,j,'v')*(vprev(j*NGP)-vprev((i_up-1)+j*NGP))
+					+vprev(i_up+j*NGP)*(vprev(i_up+(j+1)*NGP)-vprev(i_up+(j-1)*NGP));
+				Gn = vcur(j*NGP)+vcur((i_up-1)+j*NGP)-4*vcur(i_up+j*NGP)
+					+vcur(i_up+(j+1)*NGP)+vcur(i_up+(j-1)*NGP);
+				In = 1/DT*vcur(i_up+j*NGP);
+				rhs(i_up+j*NGP) = a*(3*Hn-Hp)+b*Gn+In;
+			}
+			//inner region
+			#pragma omp for private(Hn,Hp,Gn,In)
+			for(int j=1;j<NGP-1;j++){
+				for(int i=1;i<NGP-1;i++){
+					Hn = interpolate(ucur,i,j,'v')*(vcur((i+1)+j*NGP)-vcur((i-1)+j*NGP))
+						+vcur(i+j*NGP)*(vcur(i+(j+1)*NGP)-vcur(i+(j-1)*NGP));
+					Hp = interpolate(uprev,i,j,'v')*(vprev((i+1)+j*NGP)-vprev((i-1)+j*NGP))
+						+vprev(i+j*NGP)*(vprev(i+(j+1)*NGP)-vprev(i+(j-1)*NGP));
+					Gn = vcur((i+1)+j*NGP)+vcur((i-1)+j*NGP)-4*vcur(i+j*NGP)
+						+vcur(i+(j+1)*NGP)+vcur(i+(j-1)*NGP);
+					In = 1/DT*vcur(i+j*NGP);
+					rhs(i+j*NGP) = a*(3*Hn-Hp)+b*Gn+In;
+				}
 			}
 		}
 	}
 }
+
 
 inline double interpolate(VectorXd &field, int i, int j, char comp){
 	if(comp=='u'){
@@ -344,23 +365,31 @@ void solveCorrector(VectorXd &velcur, VectorXd &velpre, VectorXd &phi, char comp
 	//v(n+1) = v* - a*[phi(i+1)-phi(i)]
 	double a = DT/DX;
 	if(comp=='u'){
-		for(int j=0;j<NGP;j++){
-			for(int i=0;i<NGP-1;i++){
-				velcur(i+j*NGP) = velpre(i+j*NGP)
-									-a*(phi(i+1+j*NGP)-phi(i+j*NGP));
+		#pragma omp parallel
+		{
+			#pragma omp for
+			for(int j=0;j<NGP;j++){
+				for(int i=0;i<NGP-1;i++){
+					velcur(i+j*NGP) = velpre(i+j*NGP)
+										-a*(phi(i+1+j*NGP)-phi(i+j*NGP));
+				}
+				velcur(NGP-1+j*NGP) = velpre(NGP-1+j*NGP)
+										-a*(phi(0+j*NGP)-phi(NGP-1+j*NGP));
 			}
-			velcur(NGP-1+j*NGP) = velpre(NGP-1+j*NGP)
-									-a*(phi(0+j*NGP)-phi(NGP-1+j*NGP));
 		}
 	}
 	else if(comp=='v'){
-		for(int i=0;i<NGP;i++){
-			for(int j=0;j<NGP-1;j++){
-				velcur(i+j*NGP) = velpre(i+j*NGP)
-									-a*(phi(i+(j+1)*NGP)-phi(i+j*NGP));
+		#pragma omp parallel
+		{
+			#pragma omp for
+			for(int i=0;i<NGP;i++){
+				for(int j=0;j<NGP-1;j++){
+					velcur(i+j*NGP) = velpre(i+j*NGP)
+										-a*(phi(i+(j+1)*NGP)-phi(i+j*NGP));
+				}
+				velcur(i+(NGP-1)*NGP) = velpre(i+(NGP-1)*NGP)
+										-a*(phi(i)-phi(i+(NGP-1)*NGP));
 			}
-			velcur(i+(NGP-1)*NGP) = velpre(i+(NGP-1)*NGP)
-									-a*(phi(i)-phi(i+(NGP-1)*NGP));
 		}
 	}
 }

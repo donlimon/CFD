@@ -5,6 +5,8 @@
 
 #include <iostream>
 #include <Eigen/SparseCholesky> //solver
+#include <omp.h>
+
 #include <settings.hpp>
 #include <matrixgen.hpp>
 #include <io.hpp>
@@ -16,8 +18,9 @@ using namespace std;
 using namespace Eigen;
 
 int main(){
+	initParallel();	//Eigen parallel intialization
 	printSettings();
-	
+	double cpuTime0 = get_cpu_time();
 	//coefficient matrix for momentum/poisson eq.
 	SpMat* coMatMom = new SpMat(NGP*NGP,NGP*NGP);
 	SpMat* coMatPoi = new SpMat(NGP*NGP,NGP*NGP);
@@ -32,47 +35,73 @@ int main(){
 			*v_previous = new VectorXd(NGP*NGP),
 			*v_prelim = new VectorXd(NGP*NGP),
 			*phi = new VectorXd(NGP*NGP),
-			*rhs = new VectorXd(NGP*NGP);
+			*rhs1 = new VectorXd(NGP*NGP),
+			*rhs2 = new VectorXd(NGP*NGP);
 			
 	//Initialize with Taylor-Green at t=0	
 	calcTaylorGreen(*u_current,'u',0);
 	calcTaylorGreen(*u_previous,'u',0);
 	calcTaylorGreen(*v_current,'v',0);
 	calcTaylorGreen(*v_previous,'v',0);
-		
-	//Update righthand-side
 
-	//Solve equations
-	SimplicialLDLT<SparseMatrix<double> > solver;
-	solver.analyzePattern(*coMatMom);	//Pattern is equal for poisson and momentum eq.
+	//Initialize solver
+	SimplicialLDLT<SparseMatrix<double> > solverMom;
+	SimplicialLDLT<SparseMatrix<double> > solverPoi;
+	#pragma omp parallel sections
+	{
+		{
+			solverMom.analyzePattern(*coMatMom);
+			solverMom.factorize(*coMatMom);
+		}
+		#pragma omp section
+		{
+			solverPoi.analyzePattern(*coMatMom);
+			solverPoi.factorize(*coMatPoi);
+		}
+	}
 	for(int ts=0;ts<TSMAX;ts++){
-		printProgress(ts);
+		//printProgress(ts);
 		//Solve momentum eq.
-		solver.factorize(*coMatMom);
-		//Solve for u*
-		updateRHSmom(*rhs, *u_current, *u_previous, 
-						*v_current, *v_previous, 'u');
-		*u_prelim = solver.solve(*rhs);
-		//Solve for v*
-		updateRHSmom(*rhs, *u_current, *u_previous, 
-						*v_current, *v_previous, 'v');
-		*v_prelim = solver.solve(*rhs);
+		#pragma omp parallel sections
+		{
+			{
+				//Solve for u*
+				updateRHSmom(*rhs1, *u_current, *u_previous, 
+								*v_current, *v_previous, 'u');
+				*u_prelim = solverMom.solve(*rhs1);
+			}
+			#pragma omp section
+			{
+				//Solve for v*
+				updateRHSmom(*rhs2, *u_current, *u_previous, 
+								*v_current, *v_previous, 'v');
+				*v_prelim = solverMom.solve(*rhs2);
+			}
+		}
 		//Solve poisson eq.
-		solver.factorize(*coMatPoi);
-		updateRHSpoi(*rhs, *u_prelim, *v_prelim);
-		*phi = solver.solve(*rhs);
+		updateRHSpoi(*rhs1, *u_prelim, *v_prelim);
+		*phi = solverPoi.solve(*rhs1);
 		
-		//shift time levels
-		delete u_previous;
-		delete v_previous;
-		u_previous = u_current;
-		v_previous = v_current;
-		u_current = new VectorXd(NGP*NGP);
-		v_current = new VectorXd(NGP*NGP);
-		
-		//solve corrector equation
-		solveCorrector(*u_current,*u_prelim,*phi,'u');
-		solveCorrector(*v_current,*v_prelim,*phi,'v');
+		#pragma omp parallel sections
+		{
+			{
+				//shift time levels
+				delete u_previous;
+				u_previous = u_current;
+				u_current = new VectorXd(NGP*NGP);
+				//solve corrector
+				solveCorrector(*u_current,*u_prelim,*phi,'u');
+			}
+			#pragma omp section
+			{
+				//shift time levels
+				delete v_previous;
+				v_previous = v_current;
+				v_current = new VectorXd(NGP*NGP);
+				//solve corrector
+				solveCorrector(*v_current,*v_prelim,*phi,'v');
+			}
+		}
 	}
 	calcTaylorError(*u_current,*v_current);
 
@@ -89,7 +118,8 @@ int main(){
 	delete v_previous;
 	delete v_prelim;
 	delete phi;
-	delete rhs;
-	
+	delete rhs1;
+	delete rhs2;
+	cout << "CPU time: " << get_cpu_time()-cpuTime0 << endl;
 	return 0;
 }
