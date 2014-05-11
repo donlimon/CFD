@@ -20,7 +20,7 @@ using namespace Eigen;
 int main(){
 	initParallel();	//Eigen parallel intialization
 	printSettings();
-	double cpuTime0 = get_cpu_time();
+
 	//coefficient matrix for momentum/poisson eq.
 	SpMat* coMatMom = new SpMat(NGP*NGP,NGP*NGP);
 	SpMat* coMatPoi = new SpMat(NGP*NGP,NGP*NGP);
@@ -120,6 +120,6 @@ int main(){
 	delete phi;
 	delete rhs1;
 	delete rhs2;
-	cout << "CPU time: " << get_cpu_time()-cpuTime0 << endl;
+
 	return 0;
 }
