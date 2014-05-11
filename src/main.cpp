@@ -60,7 +60,7 @@ int main(){
 		}
 	}
 	for(int ts=0;ts<TSMAX;ts++){
-		//printProgress(ts);
+		printProgress(ts);
 		//Solve momentum eq.
 		#pragma omp parallel sections
 		{
