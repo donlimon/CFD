@@ -40,6 +40,7 @@ void calcTaylorError(VectorXd &u, VectorXd &v){
 			*v_tg = new VectorXd(NGP*NGP);
 	calcTaylorGreen(*u_tg,'u',TSMAX*DT);
 	calcTaylorGreen(*v_tg,'v',TSMAX*DT);
+	//u.norm() -> sqrt(u*u)
 	double relative_error_u = (u - *u_tg).norm() / v_tg->norm();
 	double relative_error_v = (v - *v_tg).norm() / v_tg->norm();
 	cout << "Relative error at time step #" << TSMAX << endl

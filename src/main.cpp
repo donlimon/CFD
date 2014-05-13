@@ -20,7 +20,7 @@ using namespace Eigen;
 int main(){
 	initParallel();	//Eigen parallel intialization
 	printSettings();
-
+	
 	//coefficient matrix for momentum/poisson eq.
 	SpMat* coMatMom = new SpMat(NGP*NGP,NGP*NGP);
 	SpMat* coMatPoi = new SpMat(NGP*NGP,NGP*NGP);
@@ -37,13 +37,15 @@ int main(){
 			*phi = new VectorXd(NGP*NGP),
 			*rhs1 = new VectorXd(NGP*NGP),
 			*rhs2 = new VectorXd(NGP*NGP);
-			
+	
+	cout << "Initializing velocity field..." << endl;
 	//Initialize with Taylor-Green at t=0	
 	calcTaylorGreen(*u_current,'u',0);
 	calcTaylorGreen(*u_previous,'u',0);
 	calcTaylorGreen(*v_current,'v',0);
 	calcTaylorGreen(*v_previous,'v',0);
 
+	cout << "Initializing solver..." << endl;
 	//Initialize solver
 	SimplicialLDLT<SparseMatrix<double> > solverMom;
 	SimplicialLDLT<SparseMatrix<double> > solverPoi;
@@ -59,6 +61,8 @@ int main(){
 			solverPoi.factorize(*coMatPoi);
 		}
 	}
+	
+	cout << "Starting calculations..." << endl;
 	for(int ts=0;ts<TSMAX;ts++){
 		printProgress(ts);
 		//Solve momentum eq.
@@ -104,9 +108,6 @@ int main(){
 		}
 	}
 	calcTaylorError(*u_current,*v_current);
-
-	cout << "Done!" << endl;
-	//char stop; cin >> stop;
 	
 	//Free heap
 	delete coMatMom;
@@ -121,5 +122,7 @@ int main(){
 	delete rhs1;
 	delete rhs2;
 
+	cout << "Done!" << endl;
+	//char stop; cin >> stop;
 	return 0;
 }
