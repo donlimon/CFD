@@ -15,9 +15,9 @@ void calcTaylorGreen(VectorXd &velocity,char comp,double t){
 	//u-component
 	if(comp=='u'){
 		for(int j=0;j<NGP;j++){
-			double y=((double)j)/(NGP-1); //y-coordinate
+			double y=((double)j)/NGP; //y-coordinate
 			for(int i=0;i<NGP;i++){
-				double x=((double)i)/(NGP-1); //x-coordinate
+				double x=((double)i)/NGP + DX/2; //x-coordinate
 				velocity(i+j*NGP) =
 					sin(2*M_PI*x)*cos(2*M_PI*y)*exp(-8*M_PI*M_PI*nu*t);
 			}
@@ -25,9 +25,9 @@ void calcTaylorGreen(VectorXd &velocity,char comp,double t){
 	}
 	else if(comp=='v'){
 		for(int j=0;j<NGP;j++){
-			double y=((double)j)/(NGP-1); //y-coordinate
+			double y=((double)j)/NGP + DX/2; //y-coordinate (shifted grid)
 			for(int i=0;i<NGP;i++){
-				double x=((double)i)/(NGP-1); //x-coordinate
+				double x=((double)i)/NGP; //x-coordinate
 				velocity(i+j*NGP) =
 					-sin(2*M_PI*y)*cos(2*M_PI*x)*exp(-8*M_PI*M_PI*nu*t);
 			}
@@ -40,14 +40,12 @@ void calcTaylorError(VectorXd &u, VectorXd &v){
 			*v_tg = new VectorXd(NGP*NGP);
 	calcTaylorGreen(*u_tg,'u',TSMAX*DT);
 	calcTaylorGreen(*v_tg,'v',TSMAX*DT);
-	VectorXd u_tg2 = *u_tg;
-	VectorXd v_tg2 = *v_tg;
 	//u.norm() -> sqrt(u*u)
 	double u_tmp=0, v_tmp=0;
 	for(int i=0; i<NGP-1; i++){
 		for(int j=0; j<NGP-1; j++){
-			u_tmp += pow(u(i+j*NGP) - u_tg2(i+j*NGP),2);
-			v_tmp += pow(v(i+j*NGP) - v_tg2(i+j*NGP),2);
+			u_tmp += pow(u(i+j*NGP) - (*u_tg)(i+j*NGP),2);
+			v_tmp += pow(v(i+j*NGP) - (*v_tg)(i+j*NGP),2);
 		}
 	}
 	u_tmp = sqrt(u_tmp)/(NGP*NGP);
