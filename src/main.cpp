@@ -45,7 +45,6 @@ int main(){
 	calcTaylorGreen(*v_current,'v',0);
 	calcTaylorGreen(*v_previous,'v',0);
 
-<<<<<<< HEAD
 	cout << "Initializing solver..." << endl;
 	//Initialize solver
 	SimplicialLDLT<SparseMatrix<double> > solverMom;
@@ -86,37 +85,6 @@ int main(){
 		//Solve poisson eq.
 		updateRHSpoi(*rhs1, *u_prelim, *v_prelim);
 		*phi = solverPoi.solve(*rhs1);
-=======
-	//Solve equations
-	SimplicialLDLT<SparseMatrix<double> > solverMom;
-	solverMom.analyzePattern(*coMatMom);	
-	solverMom.factorize(*coMatMom);
-	SimplicialLDLT<SparseMatrix<double> > solverPoi;
-	solverPoi.analyzePattern(*coMatPoi);
-	solverPoi.factorize(*coMatPoi);
-	for(int ts=0;ts<TSMAX;ts++){
-		printProgress(ts);
-		//Solve momentum eq.
-		//Solve for u*
-		updateRHSmom(*rhs, *u_current, *u_previous, 
-						*v_current, *v_previous, 'u');
-		*u_prelim = solverMom.solve(*rhs);
-		//Solve for v*
-		updateRHSmom(*rhs, *u_current, *u_previous, 
-						*v_current, *v_previous, 'v');
-		*v_prelim = solverMom.solve(*rhs);
-		//Solve poisson eq.
-		updateRHSpoi(*rhs, *u_prelim, *v_prelim);
-		*phi = solverPoi.solve(*rhs);
-		
-		//shift time levels
-		delete u_previous;
-		delete v_previous;
-		u_previous = u_current;
-		v_previous = v_current;
-		u_current = new VectorXd(NGP*NGP);
-		v_current = new VectorXd(NGP*NGP);
->>>>>>> master
 		
 		#pragma omp parallel sections
 		{
@@ -151,15 +119,11 @@ int main(){
 	delete v_previous;
 	delete v_prelim;
 	delete phi;
-<<<<<<< HEAD
 	delete rhs1;
 	delete rhs2;
 
 	cout << "Done!" << endl;
 	//char stop; cin >> stop;
-=======
-	delete rhs;
-	cout << "CPU time: " << get_cpu_time()-cpuTime0 << endl;
->>>>>>> master
+
 	return 0;
 }
