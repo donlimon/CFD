@@ -40,12 +40,21 @@ void calcTaylorError(VectorXd &u, VectorXd &v){
 			*v_tg = new VectorXd(NGP*NGP);
 	calcTaylorGreen(*u_tg,'u',TSMAX*DT);
 	calcTaylorGreen(*v_tg,'v',TSMAX*DT);
+	VectorXd u_tg2 = *u_tg;
+	VectorXd v_tg2 = *v_tg;
 	//u.norm() -> sqrt(u*u)
-	double relative_error_u = (u - *u_tg).norm() / v_tg->norm();
-	double relative_error_v = (v - *v_tg).norm() / v_tg->norm();
+	double u_tmp=0, v_tmp=0;
+	for(int i=0; i<NGP-1; i++){
+		for(int j=0; j<NGP-1; j++){
+			u_tmp += pow(u(i+j*NGP) - u_tg2(i+j*NGP),2);
+			v_tmp += pow(v(i+j*NGP) - v_tg2(i+j*NGP),2);
+		}
+	}
+	u_tmp = sqrt(u_tmp)/(NGP*NGP);
+	v_tmp = sqrt(v_tmp)/(NGP*NGP);
 	cout << "Relative error at time step #" << TSMAX << endl
-		 << "velocity u: " << relative_error_u << endl
-		 << "velocity v: " << relative_error_v << endl;
+		 << "velocity u: " << u_tmp << endl
+		 << "velocity v: " << v_tmp << endl;
 	delete u_tg;
 	delete v_tg;
 }
