@@ -4,7 +4,7 @@
 //author: Michael Stumpf
 
 #include <iostream>
-#include <Eigen/SparseCholesky> //solver
+#include <Eigen/SparseCholesky>
 #include <omp.h>
 
 #include <settings.hpp>

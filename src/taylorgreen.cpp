@@ -17,7 +17,7 @@ void calcTaylorGreen(VectorXd &velocity,char comp,double t){
 		for(int j=0;j<NGP;j++){
 			double y=((double)j)/NGP; //y-coordinate
 			for(int i=0;i<NGP;i++){
-				double x=((double)i)/NGP + DX/2; //x-coordinate
+				double x=((double)i)/NGP + DX/2; //x-coordinate (shifted grid)
 				velocity(i+j*NGP) =
 					sin(2*M_PI*x)*cos(2*M_PI*y)*exp(-8*M_PI*M_PI*nu*t);
 			}
@@ -37,22 +37,29 @@ void calcTaylorGreen(VectorXd &velocity,char comp,double t){
 
 void calcTaylorError(VectorXd &u, VectorXd &v){
 	VectorXd *u_tg = new VectorXd(NGP*NGP),
-			*v_tg = new VectorXd(NGP*NGP);
+			 *v_tg = new VectorXd(NGP*NGP);
 	calcTaylorGreen(*u_tg,'u',TSMAX*DT);
 	calcTaylorGreen(*v_tg,'v',TSMAX*DT);
-	//u.norm() -> sqrt(u*u)
-	double u_tmp=0, v_tmp=0;
+	double u_min = abs((*u_tg).minCoeff()),
+		   u_max = abs((*u_tg).maxCoeff()),
+		   v_min = abs((*v_tg).minCoeff()),
+		   v_max = abs((*v_tg).maxCoeff()),
+		   u_norm = max(u_min,u_max),
+		   v_norm = max(v_min,v_max);
+	double u_err=0, v_err=0;
 	for(int i=0; i<NGP-1; i++){
 		for(int j=0; j<NGP-1; j++){
-			u_tmp += pow(u(i+j*NGP) - (*u_tg)(i+j*NGP),2);
-			v_tmp += pow(v(i+j*NGP) - (*v_tg)(i+j*NGP),2);
+			u_err += pow(u(i+j*NGP) - (*u_tg)(i+j*NGP),2);
+			v_err += pow(v(i+j*NGP) - (*v_tg)(i+j*NGP),2);
 		}
 	}
-	u_tmp = sqrt(u_tmp)/(NGP*NGP);
-	v_tmp = sqrt(v_tmp)/(NGP*NGP);
-	cout << "Relative error at time step #" << TSMAX << endl
-		 << "velocity u: " << u_tmp << endl
-		 << "velocity v: " << v_tmp << endl;
+	u_err = sqrt(u_err)/(NGP*NGP)/u_norm;
+	v_err = sqrt(v_err)/(NGP*NGP)/v_norm;
+	cout << "Normalized relative error at time step #" << TSMAX << endl
+		 << "velocity u: " << u_err << endl
+		 << "velocity v: " << v_err << endl;
+	cout << "Log(DX)\tLog(Err)" << endl
+		 << log(DX) << "\t" << log(u_err) << endl;
 	delete u_tg;
 	delete v_tg;
 }
