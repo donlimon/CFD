@@ -10,5 +10,10 @@
 	const double UREF=1;		//characteristic speed
 	const int TSMAX=100;		//number of time steps
 	const double DT=0.0001; 	//time step size
-	const double DX=LREF/NGP;	//grid width (grid is uniform)
+	const double DX=LREF/(NGP-1);	//grid width (grid is uniform)
+	//Vortex
+	const double A=1;			//characteristic radius
+	const double LRATIO=1;		//Length ratio b/a
+	const double REV=10;		//Reynoldsnumber of vortex
+	const double NU=1;			//Viscosity
 #endif

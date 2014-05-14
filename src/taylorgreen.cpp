@@ -11,13 +11,14 @@ using namespace std;
 using namespace Eigen;
 
 void calcTaylorGreen(VectorXd &velocity,char comp,double t){
-	double nu = (LREF*UREF)/RE;
+	double nu = (LREF*UREF)/RE,
+		   x,y;
 	//u-component
 	if(comp=='u'){
 		for(int j=0;j<NGP;j++){
-			double y=((double)j)/NGP; //y-coordinate
+			y=j*DX; //y-coordinate
 			for(int i=0;i<NGP;i++){
-				double x=((double)i)/NGP + DX/2; //x-coordinate (shifted grid)
+				x=i*DX + DX/2; //x-coordinate (shifted grid)
 				velocity(i+j*NGP) =
 					sin(2*M_PI*x)*cos(2*M_PI*y)*exp(-8*M_PI*M_PI*nu*t);
 			}
@@ -25,9 +26,9 @@ void calcTaylorGreen(VectorXd &velocity,char comp,double t){
 	}
 	else if(comp=='v'){
 		for(int j=0;j<NGP;j++){
-			double y=((double)j)/NGP + DX/2; //y-coordinate (shifted grid)
+			y=j*DX + DX/2; //y-coordinate (shifted grid)
 			for(int i=0;i<NGP;i++){
-				double x=((double)i)/NGP; //x-coordinate
+				x=i*DX; //x-coordinate
 				velocity(i+j*NGP) =
 					-sin(2*M_PI*y)*cos(2*M_PI*x)*exp(-8*M_PI*M_PI*nu*t);
 			}
