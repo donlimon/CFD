@@ -44,6 +44,11 @@ int main(){
 	calcTaylorGreen(*u_previous,'u',0);
 	calcTaylorGreen(*v_current,'v',0);
 	calcTaylorGreen(*v_previous,'v',0);
+	
+	writeGridToFile();
+	writeVelocityToFile(*u_current,*v_current,'u');
+	writeVelocityToFile(*u_current,*v_current,'v');
+	writeVelocityToFile(*u_current,*v_current,'m');
 
 	cout << "Initializing solver..." << endl;
 	//Initialize solver
@@ -108,6 +113,8 @@ int main(){
 		}
 	}
 	calcTaylorError(*u_current,*v_current);
+	
+	writePressureToFile(*phi);
 	
 	//Free heap
 	delete coMatMom;
