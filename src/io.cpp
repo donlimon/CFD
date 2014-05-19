@@ -37,7 +37,10 @@ void printProgress(int ts){
 		progressInit=true;
 	}
 	int interval = TSMAX/10;	//show progress every ~10%
-	if((ts+1)%interval==0){
+	if(interval==0){
+		return;
+	}
+	else if((ts+1)%interval==0){
 		double cpuTime=(double)clock()/CLOCKS_PER_SEC,
 				progress=((double)ts+1)/TSMAX,
 				elapTime=cpuTime-cpuTime0;

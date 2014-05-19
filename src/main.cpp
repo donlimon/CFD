@@ -11,6 +11,7 @@
 #include <matrixgen.hpp>
 #include <io.hpp>
 #include <taylorgreen.hpp>
+#include <vortex.hpp>
 
 #include <testing.hpp>
 
@@ -40,15 +41,14 @@ int main(){
 	
 	cout << "Initializing velocity field..." << endl;
 	//Initialize with Taylor-Green at t=0	
-	calcTaylorGreen(*u_current,'u',0);
+	/*calcTaylorGreen(*u_current,'u',0);
 	calcTaylorGreen(*u_previous,'u',0);
 	calcTaylorGreen(*v_current,'v',0);
-	calcTaylorGreen(*v_previous,'v',0);
+	calcTaylorGreen(*v_previous,'v',0);*/
+	initializeVortex(*u_current,*v_current);
+	initializeVortex(*u_previous,*v_previous);
 	
-	writeGridToFile();
-	writeVelocityToFile(*u_current,*v_current,'u');
-	writeVelocityToFile(*u_current,*v_current,'v');
-	writeVelocityToFile(*u_current,*v_current,'m');
+	
 
 	cout << "Initializing solver..." << endl;
 	//Initialize solver
@@ -112,8 +112,12 @@ int main(){
 			}
 		}
 	}
-	calcTaylorError(*u_current,*v_current);
+	//calcTaylorError(*u_current,*v_current);
 	
+	writeGridToFile();
+	writeVelocityToFile(*u_current,*v_current,'u');
+	writeVelocityToFile(*u_current,*v_current,'v');
+	writeVelocityToFile(*u_current,*v_current,'m');
 	writePressureToFile(*phi);
 	
 	//Free heap

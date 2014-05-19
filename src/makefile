@@ -10,10 +10,10 @@ BDIR=../bin
 
 LIBS=
 
-_DEPS = settings.hpp matinc.hpp matrixgen.hpp io.hpp taylorgreen.hpp testing.hpp 
+_DEPS = settings.hpp matinc.hpp matrixgen.hpp io.hpp taylorgreen.hpp testing.hpp vortex.hpp
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = main.o matrixgen.o io.o taylorgreen.o testing.o
+_OBJ = main.o matrixgen.o io.o taylorgreen.o testing.o vortex.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 debug: CPPFLAGS += -g
