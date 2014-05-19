@@ -172,3 +172,17 @@ void writePressureToFile(VectorXd &phi){
 	}
 	outfile.close();
 }
+
+void writePhiToFile(VectorXd &phi){
+	ofstream outfile;
+	string filename=OUTDIR;
+	filename += "data-phi.dat";
+	outfile.open(filename.c_str());
+	for(int j=0;j<NGP;j++){
+		for(int i=0;i<NGP;i++){
+			outfile << phi(i+j*NGP) << " ";
+		}
+		outfile << endl;
+	}
+	outfile.close();
+}

@@ -47,8 +47,6 @@ int main(){
 	calcTaylorGreen(*v_previous,'v',0);*/
 	initializeVortex(*u_current,*v_current);
 	initializeVortex(*u_previous,*v_previous);
-	
-	
 
 	cout << "Initializing solver..." << endl;
 	//Initialize solver
@@ -119,6 +117,7 @@ int main(){
 	writeVelocityToFile(*u_current,*v_current,'v');
 	writeVelocityToFile(*u_current,*v_current,'m');
 	writePressureToFile(*phi);
+	writePhiToFile(*phi);
 	
 	//Free heap
 	delete coMatMom;

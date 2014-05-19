@@ -67,7 +67,7 @@ void initializeVortex(VectorXd &u, VectorXd &v){
 			r=sqrt(pow(delX,2)+pow(delY,2));	
 			if(r!=0){
 				v_circ=gamma/(2*M_PI*r)*(1-exp(-(r*r)/(A*A)));
-				v(i+j*NGP)=v_circ*(delX/r);
+				v(i+j*NGP)=v_circ*(-delX/r);
 			}
 			else{
 				v_circ=0;
@@ -123,7 +123,7 @@ void initializeVortex(VectorXd &u, VectorXd &v){
 			r=sqrt(pow(delX,2)+pow(delY,2));	
 			if(r!=0){
 				v_circ=-gamma/(2*M_PI*r)*(1-exp(-(r*r)/(A*A)));
-				v(i+j*NGP)+=v_circ*(delX/r);
+				v(i+j*NGP)+=v_circ*(-delX/r);
 			}
 			else{
 				v_circ=0;
