@@ -18,10 +18,12 @@
 using namespace std;
 using namespace Eigen;
 
+inline void checkDivergence(VectorXd &u, VectorXd &v);
+
 int main(){
 	initParallel();	//Eigen parallel intialization
 	printSettings();
-	double cpuTime0 = get_cpu_time();
+
 	//coefficient matrix for momentum/poisson eq.
 	SpMat* coMatMom = new SpMat(NGP*NGP,NGP*NGP);
 	SpMat* coMatPoi = new SpMat(NGP*NGP,NGP*NGP);
@@ -36,20 +38,32 @@ int main(){
 			*v_previous = new VectorXd(NGP*NGP),
 			*v_prelim = new VectorXd(NGP*NGP),
 			*phi = new VectorXd(NGP*NGP),
-			*rhs1 = new VectorXd(NGP*NGP),
-			*rhs2 = new VectorXd(NGP*NGP);
+			*rhs = new VectorXd(NGP*NGP);
 	
 	cout << "Initializing velocity field..." << endl;
-	//Initialize with Taylor-Green at t=0	
-	/*calcTaylorGreen(*u_current,'u',0);
-	calcTaylorGreen(*u_previous,'u',0);
-	calcTaylorGreen(*v_current,'v',0);
-	calcTaylorGreen(*v_previous,'v',0);*/
-	initializeVortex(*u_current,*v_current);
-	initializeVortex(*u_previous,*v_previous);
+	if(TYPE=='t'){
+		//Initialize with Taylor-Green at t=0	
+		calcTaylorGreen(*u_current,'u',0);
+		calcTaylorGreen(*u_previous,'u',0);
+		calcTaylorGreen(*v_current,'v',0);
+		calcTaylorGreen(*v_previous,'v',0);
+	}
+	else if(TYPE=='v'){
+		//Initialize with vortices
+		initializeVortex(*u_current,*v_current);
+		initializeVortex(*u_previous,*v_previous);
+	}
+	
+	//Check CFL condition at t=0
+	checkCFL(*u_current,*v_current,true);
+	
+	//Save settings, grid data and initial velocity field
+	writeInfoToBinary(0);
+	writeGridToBinary();
+	writeVelocityToBinary(*u_current,*v_current,0);
 
-	cout << "Initializing solver..." << endl;
 	//Initialize solver
+	cout << "Initializing solver..." << endl;
 	SimplicialLDLT<SparseMatrix<double> > solverMom;
 	SimplicialLDLT<SparseMatrix<double> > solverPoi;
 	#pragma omp parallel sections
@@ -65,59 +79,44 @@ int main(){
 		}
 	}
 	
+	//Calculate solutions
 	cout << "Starting calculations..." << endl;
 	for(int ts=0;ts<TSMAX;ts++){
 		printProgress(ts);
 		//Solve momentum eq.
-		#pragma omp parallel sections
-		{
-			{
-				//Solve for u*
-				updateRHSmom(*rhs1, *u_current, *u_previous, 
-								*v_current, *v_previous, 'u');
-				*u_prelim = solverMom.solve(*rhs1);
-			}
-			#pragma omp section
-			{
-				//Solve for v*
-				updateRHSmom(*rhs2, *u_current, *u_previous, 
-								*v_current, *v_previous, 'v');
-				*v_prelim = solverMom.solve(*rhs2);
-			}
-		}
+		updateRHSmom(*rhs, *u_current, *u_previous, 
+						*v_current, *v_previous, 'u');
+		*u_prelim = solverMom.solve(*rhs);
+		updateRHSmom(*rhs, *u_current, *u_previous, 
+						*v_current, *v_previous, 'v');
+		*v_prelim = solverMom.solve(*rhs);
+
 		//Solve poisson eq.
-		updateRHSpoi(*rhs1, *u_prelim, *v_prelim);
-		*phi = solverPoi.solve(*rhs1);
+		updateRHSpoi(*rhs, *u_prelim, *v_prelim);
+		*phi = solverPoi.solve(*rhs);
 		
-		#pragma omp parallel sections
-		{
-			{
-				//shift time levels
-				delete u_previous;
-				u_previous = u_current;
-				u_current = new VectorXd(NGP*NGP);
-				//solve corrector
-				solveCorrector(*u_current,*u_prelim,*phi,'u');
-			}
-			#pragma omp section
-			{
-				//shift time levels
-				delete v_previous;
-				v_previous = v_current;
-				v_current = new VectorXd(NGP*NGP);
-				//solve corrector
-				solveCorrector(*v_current,*v_prelim,*phi,'v');
-			}
-		}
+		//shift time levels
+		delete u_previous;
+		delete v_previous;
+		u_previous = u_current;
+		v_previous = v_current;
+		u_current = new VectorXd(NGP*NGP);
+		v_current = new VectorXd(NGP*NGP);
+		
+		//solve corrector
+		solveCorrector(*u_current,*u_prelim,*phi,'u');
+		solveCorrector(*v_current,*v_prelim,*phi,'v');
+		
+		//save data
+		if((ts+1)%SAVEINT==0 || ts==TSMAX-1)
+			saveData(*u_current,*v_current,*phi,ts+1);
+		
+		//Check if solution diverges
+		checkDivergence(*u_current,*v_current);
 	}
-	//calcTaylorError(*u_current,*v_current);
-	
-	writeGridToFile();
-	writeVelocityToFile(*u_current,*v_current,'u');
-	writeVelocityToFile(*u_current,*v_current,'v');
-	writeVelocityToFile(*u_current,*v_current,'m');
-	writePressureToFile(*phi);
-	writePhiToFile(*phi);
+	//Check error if Taylor-Green
+	if(TYPE=='t')
+		calcTaylorError(*u_current,*v_current);
 	
 	//Free heap
 	delete coMatMom;
@@ -129,11 +128,20 @@ int main(){
 	delete v_previous;
 	delete v_prelim;
 	delete phi;
-	delete rhs1;
-	delete rhs2;
+	delete rhs;
 
 	cout << "Done!" << endl;
-	//char stop; cin >> stop;
 
 	return 0;
+}
+
+inline void checkDivergence(VectorXd &u, VectorXd &v){
+	if(u.hasNaN()){
+		cout << "ERROR: Divergence detected!" << endl;
+		exit(1);
+	}
+	else if(v.hasNaN()){
+		cout << "ERROR: Divergence detected!" << endl;
+		exit(1);
+	}
 }

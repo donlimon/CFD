@@ -54,8 +54,8 @@ void calcTaylorError(VectorXd &u, VectorXd &v){
 			v_err += pow(v(i+j*NGP) - (*v_tg)(i+j*NGP),2);
 		}
 	}
-	u_err = sqrt(u_err)/(NGP*NGP)/u_norm;
-	v_err = sqrt(v_err)/(NGP*NGP)/v_norm;
+	u_err = sqrt(u_err/(NGP*NGP))/u_norm;
+	v_err = sqrt(v_err/(NGP*NGP))/v_norm;
 	cout << "Normalized relative error at time step #" << TSMAX << endl
 		 << "velocity u: " << u_err << endl
 		 << "velocity v: " << v_err << endl;

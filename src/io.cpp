@@ -6,6 +6,7 @@
 #include <time.h>
 #include <fstream>
 #include <string>
+#include <sstream>
 #include <matinc.hpp>
 #include <io.hpp>
 #include <settings.hpp>
@@ -13,26 +14,46 @@
 using namespace std;
 using namespace Eigen;
 
+//global variables
 bool progressInit = false;
+//prototypes for local functions
+string getFilenameDigits(int);
 
 void printSettings(){
 	cout << "Settings" << endl
-		 << "--------------------- " << endl
-		 << "Grid Points (in 1D):  " << NGP << endl
-		 << "Grid Points (total):  " << NGP*NGP << endl
-		 << "Reynolds number:      " << RE << endl
-		 << "Domain length:        " << LREF << endl
-		 << "Reference speed:      " << UREF << endl
-		 << "Grid width:           " << DX << endl
-		 << "Time step size:       " << DT << endl
-		 << "Number of time steps: " << TSMAX << endl << endl;
+		 << "---------------------- " << endl;
+	cout << "Simulation type:       ";
+	if(TYPE=='t')
+		cout << "Taylor-Green" << endl;
+	else if(TYPE=='v')
+		cout << "Vortex" << endl;
+	else
+		cout << "ERROR" << endl;
+		
+	cout << "Grid Points (in 1D):   " << NGP << endl
+		 << "Grid Points (total):   " << NGP*NGP << endl
+		 << "Grid width:            " << DX << endl
+		 << "Time step size:        " << DT << endl
+		 << "Number of time steps:  " << TSMAX << endl
+		 << "Domain length:         " << LREF << endl;
+	if(TYPE=='t'){
+		cout << "Reynolds number:       " << RE << endl
+		 	 << "Reference speed:       " << UREF << endl << endl;
+	}
+	else if(TYPE=='v'){
+		cout << "Reynolds number:       " << REV << endl
+		 	 << "Characteristic radius: " << A << endl
+		 	 << "Length ratio:          " << LRATIO << endl << endl;
+	}
+	else{
+		cout << "Aborting..." << endl;
+		exit(2);
+	}
 }
 
 void printProgress(int ts){
-	static double cpuTime0;
 	static time_t time0;
 	if(progressInit==false){
-		cpuTime0=(double)clock()/CLOCKS_PER_SEC;
 		time0=time(NULL);
 		progressInit=true;
 	}
@@ -41,148 +62,325 @@ void printProgress(int ts){
 		return;
 	}
 	else if((ts+1)%interval==0){
-		double cpuTime=(double)clock()/CLOCKS_PER_SEC,
-				progress=((double)ts+1)/TSMAX,
-				elapTime=cpuTime-cpuTime0;
+		time_t curTime;
+		double progress, elapTime;
+		
+		curTime = time(NULL);
+		progress = ((double)ts+1)/TSMAX,
+		elapTime = difftime(curTime,time0);
 		//calculate ETA
 		time_t eta = time0 + (int)(elapTime/progress);
 		struct tm *etas;
 		etas = localtime(&eta);
-		
 		cout << "Time step #" << ts+1 << " of " << TSMAX << endl
 			 << "Progress:     " << progress*100 << "%" << endl
 			 << "Elapsed time: " << (int)elapTime << " sec" << endl
-			 << "Estimated ending time: " << asctime(etas) << endl;		 
+			 << "Estimated ending time: " << asctime(etas) << endl; 
+	}
+}
+
+void checkCFL(VectorXd &u, VectorXd &v,bool recommendTS){
+	double vmag_max = 0, vmag_tmp, u_inp, v_inp, CFL;
+	for(int j=0;j<NGP;j++){
+		for(int i=0;i<NGP;i++){
+			if(i!=0)
+				u_inp = (u(i+j*NGP)+u((i-1)+j*NGP))/2;
+			else
+				u_inp = (u(j*NGP)+u((NGP-1)+j*NGP))/2;
+			if(j!=0)
+				v_inp = (v(i+j*NGP)+v(i+(j-1)*NGP))/2;
+			else
+				v_inp = (v(i)+v(i+(NGP-1)*NGP))/2;
+				
+			vmag_tmp = sqrt(pow(u_inp,2)+pow(v_inp,2));
+			if(vmag_tmp > vmag_max)
+				vmag_max = vmag_tmp;
+		}
+	}
+	CFL = DT*vmag_max/DX;
+	cout << "Current CFL number: " << CFL << endl;
+	if(CFL>1)
+		cout << "WARNING: simulation might be unstable (CFL > 1)" << endl;
+	if(recommendTS){
+		cout << "Recommended time step size: "  << endl
+		 	 << "CFL = 0.5: " << 0.5*DX/vmag_max << endl
+		 	 << "CFL = 0.1: " << 0.1*DX/vmag_max << endl; 
 	}
 }
 
 void writeGridToFile(){
-	ofstream xpoints, ypoints;
-	string filename;
+	string path = OUTDIR;
+	string xFile = path + "grid-x.dat";
+	string yFile = path + "grid-y.dat";
 	
-	filename = OUTDIR;
-	filename += "grid-x.dat";
-	xpoints.open(filename.c_str());
+	ofstream xData(xFile.c_str());
+	ofstream yData(yFile.c_str());
+	
 	for(int j=0;j<NGP;j++){
 		for(int i=0;i<NGP;i++){
-			xpoints << i*DX << " ";
+			xData << i*DX << " ";
 		}
-		xpoints << endl;
+		xData << endl;
 	}
-	xpoints.close();
-	
-	filename = OUTDIR;
-	filename += "grid-y.dat";
-	ypoints.open(filename.c_str());
 	for(int j=0;j<NGP;j++){
 		for(int i=0;i<NGP;i++){
-			ypoints << j*DX << " ";
+			yData << j*DX << " ";
 		}
-		ypoints << endl;
+		yData << endl;
 	}
-	ypoints.close();
+	xData.close();
+	yData.close();
 }
 
-void writeVelocityToFile(VectorXd &u,VectorXd &v,char comp){
-	ofstream outfile;
-	string filename=OUTDIR;
-	if(comp=='u'){
-		filename += "data-u.dat";
-		outfile.open(filename.c_str());
-		for(int j=0;j<NGP;j++){
-			outfile << (u(j*NGP)+u((NGP-1)+j*NGP))/2 << " ";
-			for(int i=1;i<NGP;i++){
-				outfile << (u(i+j*NGP)+u((i-1)+j*NGP))/2 << " ";
-			}
-			outfile << endl;
+void writeVelocityToFile(VectorXd &u,VectorXd &v){
+	string path = OUTDIR;
+	string uFile = path + "data-u.dat";
+	string vFile = path + "data-v.dat";
+	string mFile = path + "data-m.dat";
+	
+	ofstream uData(uFile.c_str());
+	ofstream vData(vFile.c_str());
+	ofstream mData(mFile.c_str());
+	for(int j=0;j<NGP;j++){
+		uData << (u(j*NGP)+u((NGP-1)+j*NGP))/2 << " ";
+		for(int i=1;i<NGP;i++){
+			uData << (u(i+j*NGP)+u((i-1)+j*NGP))/2 << " ";
 		}
-		outfile.close();
+		uData << endl;
 	}
-	else if(comp=='v'){
-		filename += "data-v.dat";
-		outfile.open(filename.c_str());
-		for(int j=0;j<NGP;j++){
-			for(int i=0;i<NGP;i++){
-				if(j!=0){
-					outfile << (v(i+j*NGP)+v(i+(j-1)*NGP))/2 << " ";
-				}
-				else{
-					outfile << (v(i)+v(i+(NGP-1)*NGP))/2 << " ";
-				}
-			}
-			outfile << endl;
+	for(int j=0;j<NGP;j++){
+		for(int i=0;i<NGP;i++){
+			if(j!=0)
+				vData << (v(i+j*NGP)+v(i+(j-1)*NGP))/2 << " ";
+			else
+				vData << (v(i)+v(i+(NGP-1)*NGP))/2 << " ";
 		}
-		outfile.close();
+		vData << endl;
 	}
-	else if(comp=='m'){		//magnitude
-		filename += "data-velmag.dat";
-		double u_inp, v_inp;
-		outfile.open(filename.c_str());
-		for(int j=0;j<NGP;j++){
-			for(int i=0;i<NGP;i++){
-				if(i!=0){
-					u_inp = (u(i+j*NGP)+u((i-1)+j*NGP))/2;
-				}
-				else{
-					u_inp = (u(j*NGP)+u((NGP-1)+j*NGP))/2;
-				}
-				if(j!=0){
-					v_inp = (v(i+j*NGP)+v(i+(j-1)*NGP))/2;
-				}
-				else{
-					v_inp = (v(i)+v(i+(NGP-1)*NGP))/2;
-				}
-				outfile << sqrt(pow(u_inp,2)+pow(v_inp,2)) << " ";
-			}
-			outfile << endl;
+	double u_inp, v_inp;
+	for(int j=0;j<NGP;j++){
+		for(int i=0;i<NGP;i++){
+			if(i!=0)
+				u_inp = (u(i+j*NGP)+u((i-1)+j*NGP))/2;
+			else
+				u_inp = (u(j*NGP)+u((NGP-1)+j*NGP))/2;
+			if(j!=0)
+				v_inp = (v(i+j*NGP)+v(i+(j-1)*NGP))/2;
+			else
+				v_inp = (v(i)+v(i+(NGP-1)*NGP))/2;
+			mData << sqrt(pow(u_inp,2)+pow(v_inp,2)) << " ";
 		}
-		outfile.close();
+		mData << endl;
 	}
+	uData.close();
+	vData.close();
+	mData.close();
 }
 
 void writePressureToFile(VectorXd &phi){
+	string path = OUTDIR;
+	string pFile = path + "data-p.dat";
+	ofstream pData(pFile.c_str());
+	
 	double phi_nab;
-	ofstream outfile;
-	string filename=OUTDIR;
-	filename += "data-p.dat";
-	outfile.open(filename.c_str());
 	for(int j=0;j<NGP;j++){
 		for(int i=0;i<NGP;i++){
-			if(i==0){
+			if(i==0)
 				phi_nab = phi((i+1)+j*NGP)+phi((NGP-1)+j*NGP)-4*phi(i+j*NGP);
-			}
-			else if(i==(NGP-1)){
+			else if(i==(NGP-1))
 				phi_nab = phi(0+j*NGP)+phi((i-1)+j*NGP)-4*phi(i+j*NGP);
-			}
-			else{
+			else
 				phi_nab = phi((i+1)+j*NGP)+phi((i-1)+j*NGP)-4*phi(i+j*NGP);
-			}
-			if(j==0){
+			if(j==0)
 				phi_nab += phi(i+(j+1)*NGP)+phi(i+(NGP-1)*NGP);
-			}
-			else if(j==(NGP-1)){
+			else if(j==(NGP-1))
 				phi_nab += phi(i+0*NGP)+phi(i+(j-1)*NGP);
-			}
-			else{
+			else
 				phi_nab += phi(i+(j+1)*NGP)+phi(i+(j-1)*NGP);
-			}
-			outfile << phi(i+j*NGP)-(DT/(RE*2))*phi_nab << " ";
+			pData << phi(i+j*NGP)-(DT/(RE*2))*phi_nab << " ";
 		}
-		outfile << endl;
+		pData << endl;
 	}
-	outfile.close();
+	pData.close();
 }
 
 void writePhiToFile(VectorXd &phi){
-	ofstream outfile;
-	string filename=OUTDIR;
-	filename += "data-phi.dat";
-	outfile.open(filename.c_str());
+	string path = OUTDIR;
+	string phiFile = path + "data-phi.dat";
+	ofstream phiData(phiFile.c_str());
+	
 	for(int j=0;j<NGP;j++){
 		for(int i=0;i<NGP;i++){
-			outfile << phi(i+j*NGP) << " ";
+			phiData << phi(i+j*NGP) << " ";
 		}
-		outfile << endl;
+		phiData << endl;
 	}
-	outfile.close();
+	phiData.close();
+}
+
+void writeGridToBinary(){
+	string path = OUTDIR;
+	string xFile = path + "grid-x.bin";
+	string yFile = path + "grid-y.bin";
+	ofstream xData(xFile.c_str(), ios::out | ios::binary);
+	ofstream yData(yFile.c_str(), ios::out | ios::binary);
+
+	double buffer;
+	for(int j=0;j<NGP;j++){
+		for(int i=0;i<NGP;i++){
+			buffer=i*DX;
+			xData.write((char*)&buffer,sizeof(buffer));
+		}
+	}
+	for(int j=0;j<NGP;j++){
+		for(int i=0;i<NGP;i++){
+			buffer=j*DX;
+			yData.write((char*)&buffer,sizeof(buffer));
+		}
+	}
+	xData.close();
+	yData.close();
+}
+
+void writeVelocityToBinary(VectorXd &u,VectorXd &v,int ts){
+	string path = OUTDIR;
+	string fileNum = getFilenameDigits(ts);
+	string uFile = path + "data-u-" + fileNum + ".bin";
+	string vFile = path + "data-v-" + fileNum + ".bin";
+	string mFile = path + "data-vmag-" + fileNum + ".bin";
+	ofstream uData(uFile.c_str(), ios::out | ios::binary);
+	ofstream vData(vFile.c_str(), ios::out | ios::binary);
+	ofstream mData(mFile.c_str(), ios::out | ios::binary);
+	
+	double buffer;
+	for(int j=0;j<NGP;j++){
+		buffer = (u(j*NGP)+u((NGP-1)+j*NGP))/2;
+		uData.write((char*)&buffer,sizeof(buffer));
+		for(int i=1;i<NGP;i++){
+			buffer = (u(i+j*NGP)+u((i-1)+j*NGP))/2;
+			uData.write((char*)&buffer,sizeof(buffer));
+		}
+	}
+	for(int j=0;j<NGP;j++){
+		for(int i=0;i<NGP;i++){
+			if(j!=0)
+				buffer = (v(i+j*NGP)+v(i+(j-1)*NGP))/2;
+			else
+				buffer = (v(i)+v(i+(NGP-1)*NGP))/2;
+			vData.write((char*)&buffer,sizeof(buffer));
+		}
+	}
+	double u_inp, v_inp;
+	for(int j=0;j<NGP;j++){
+		for(int i=0;i<NGP;i++){
+			if(i!=0)
+				u_inp = (u(i+j*NGP)+u((i-1)+j*NGP))/2;
+			else
+				u_inp = (u(j*NGP)+u((NGP-1)+j*NGP))/2;
+			if(j!=0)
+				v_inp = (v(i+j*NGP)+v(i+(j-1)*NGP))/2;
+			else
+				v_inp = (v(i)+v(i+(NGP-1)*NGP))/2;
+			buffer = sqrt(pow(u_inp,2)+pow(v_inp,2));
+			mData.write((char*)&buffer,sizeof(buffer));
+		}
+	}
+	
+	uData.close();
+	vData.close();
+	mData.close();
+}
+
+void writePressureToBinary(VectorXd &phi, int ts){
+	string path = OUTDIR;
+	string fileNum = getFilenameDigits(ts);
+	string pFile = path + "data-p-" + fileNum + ".bin";
+	ofstream pData(pFile.c_str(), ios::out | ios::binary);
+	
+	double phi_nab, buffer;
+	for(int j=0;j<NGP;j++){
+		for(int i=0;i<NGP;i++){
+			if(i==0)
+				phi_nab = phi((i+1)+j*NGP)+phi((NGP-1)+j*NGP)-4*phi(i+j*NGP);
+			else if(i==(NGP-1))
+				phi_nab = phi(0+j*NGP)+phi((i-1)+j*NGP)-4*phi(i+j*NGP);
+			else
+				phi_nab = phi((i+1)+j*NGP)+phi((i-1)+j*NGP)-4*phi(i+j*NGP);
+
+			if(j==0)
+				phi_nab += phi(i+(j+1)*NGP)+phi(i+(NGP-1)*NGP);
+			else if(j==(NGP-1))
+				phi_nab += phi(i+0*NGP)+phi(i+(j-1)*NGP);
+			else
+				phi_nab += phi(i+(j+1)*NGP)+phi(i+(j-1)*NGP);
+			buffer = phi(i+j*NGP)-(DT/(RE*2))*phi_nab;
+			pData.write((char*)&buffer,sizeof(buffer));
+		}
+	}
+	pData.close();
+}
+
+void writeInfoToBinary(int ts){
+	string path = OUTDIR;
+	if(ts==0){
+		struct Buffer{
+			char type;
+			int ngp,tsmax;
+			double lref,dt,dx,re,uref,a,lratio,rev,nu;	
+		} buffer;
+		buffer.type = TYPE;
+		buffer.ngp = NGP;
+		buffer.tsmax = TSMAX;
+		buffer.lref = LREF;
+		buffer.dt = DT;
+		buffer.dx = DX;
+		if(TYPE=='t'){
+			buffer.re = RE;
+			buffer.uref = UREF;
+			buffer.a = 0;
+			buffer.lratio = 0;
+			buffer.rev = 0;
+			buffer.nu = 0;
+		}
+		else if(TYPE=='v'){
+			buffer.re = 0;
+			buffer.uref = 0;
+			buffer.a = A;
+			buffer.lratio = LRATIO;
+			buffer.rev = REV;
+			buffer.nu = NU;
+		}
+		string fileNum = getFilenameDigits(ts);
+		string infoFile = path + "settings.bin";
+		ofstream infoData(infoFile.c_str(), ios::out | ios::binary);
+		infoData.write((char*)&buffer,sizeof(buffer));
+		infoData.close();
+	}
+	else{
+		string fileNum = getFilenameDigits(ts);
+		string infoFile = path + "info-" + fileNum + ".bin";
+		double buffer = ts*DT;
+		ofstream infoData(infoFile.c_str(), ios::out | ios::binary);
+		infoData.write((char*)&buffer,sizeof(buffer));
+		infoData.close();
+	}
+}
+
+void saveData(VectorXd &u, VectorXd &v, VectorXd &phi, int ts){
+	writeInfoToBinary(ts);
+	writeVelocityToBinary(u,v,ts);
+	writePressureToBinary(phi,ts);
+}
+
+string getFilenameDigits(int ts){
+	//determine number of digits needed for filename
+	int digits = 1;
+	int max = TSMAX;
+	while (max/=10)
+	   digits++;
+	stringstream fileNum;
+	fileNum.fill('0');
+	fileNum.width(digits);
+	fileNum << ts;
+	return fileNum.str();
 }
