@@ -10,15 +10,15 @@
 #include <matinc.hpp>
 #include <io.hpp>
 #include <settings.hpp>
+#include <vortex.hpp>
 
 using namespace std;
 using namespace Eigen;
 
-//global variables
-bool progressInit = false;
-//prototypes for local functions
-string getFilenameDigits(int);
+/* LOCAL PROTOTYPES */
+string getFilenameDigits(int ts, int max);
 
+/* FUNCTIONS PROVIDED FOR OTHER CPP */
 void printSettings(){
 	cout << "Settings" << endl
 		 << "---------------------- " << endl;
@@ -52,6 +52,7 @@ void printSettings(){
 }
 
 void printProgress(int ts){
+	static bool progressInit=false;
 	static time_t time0;
 	if(progressInit==false){
 		time0=time(NULL);
@@ -218,6 +219,20 @@ void writePhiToFile(VectorXd &phi){
 	phiData.close();
 }
 
+void writeOmegaToFile(VectorXd &omega){
+	string path = OUTDIR;
+	string omegaFile = path + "data-omega.dat";
+	ofstream omegaData(omegaFile.c_str());
+	
+	for(int j=0;j<NGP;j++){
+		for(int i=0;i<NGP;i++){
+			omegaData << omega(i+j*NGP) << " ";
+		}
+		omegaData << endl;
+	}
+	omegaData.close();
+}
+
 void writeGridToBinary(){
 	string path = OUTDIR;
 	string xFile = path + "grid-x.bin";
@@ -244,7 +259,7 @@ void writeGridToBinary(){
 
 void writeVelocityToBinary(VectorXd &u,VectorXd &v,int ts){
 	string path = OUTDIR;
-	string fileNum = getFilenameDigits(ts);
+	string fileNum = getFilenameDigits(ts,TSMAX);
 	string uFile = path + "data-u-" + fileNum + ".bin";
 	string vFile = path + "data-v-" + fileNum + ".bin";
 	string mFile = path + "data-vmag-" + fileNum + ".bin";
@@ -293,7 +308,7 @@ void writeVelocityToBinary(VectorXd &u,VectorXd &v,int ts){
 
 void writePressureToBinary(VectorXd &phi, int ts){
 	string path = OUTDIR;
-	string fileNum = getFilenameDigits(ts);
+	string fileNum = getFilenameDigits(ts,TSMAX);
 	string pFile = path + "data-p-" + fileNum + ".bin";
 	ofstream pData(pFile.c_str(), ios::out | ios::binary);
 	
@@ -323,46 +338,56 @@ void writePressureToBinary(VectorXd &phi, int ts){
 void writeInfoToBinary(int ts){
 	string path = OUTDIR;
 	if(ts==0){
-		struct Buffer{
-			char type;
-			int ngp,tsmax;
-			double lref,dt,dx,re,uref,a,lratio,rev,nu;	
-		} buffer;
-		buffer.type = TYPE;
-		buffer.ngp = NGP;
-		buffer.tsmax = TSMAX;
-		buffer.lref = LREF;
-		buffer.dt = DT;
-		buffer.dx = DX;
-		if(TYPE=='t'){
-			buffer.re = RE;
-			buffer.uref = UREF;
-			buffer.a = 0;
-			buffer.lratio = 0;
-			buffer.rev = 0;
-			buffer.nu = 0;
-		}
-		else if(TYPE=='v'){
-			buffer.re = 0;
-			buffer.uref = 0;
-			buffer.a = A;
-			buffer.lratio = LRATIO;
-			buffer.rev = REV;
-			buffer.nu = NU;
-		}
-		string fileNum = getFilenameDigits(ts);
+		string fileNum = getFilenameDigits(ts,TSMAX);
 		string infoFile = path + "settings.bin";
 		ofstream infoData(infoFile.c_str(), ios::out | ios::binary);
-		infoData.write((char*)&buffer,sizeof(buffer));
+		infoData.write((char*)&TYPE,sizeof(TYPE));
+		infoData.write((char*)&NGP,sizeof(NGP));
+		infoData.write((char*)&TSMAX,sizeof(TSMAX));
+		infoData.write((char*)&LREF,sizeof(LREF));
+		infoData.write((char*)&DT,sizeof(DT));
+		infoData.write((char*)&DX,sizeof(DX));
+		if(TYPE=='t'){
+			infoData.write((char*)&RE,sizeof(RE));
+			infoData.write((char*)&UREF,sizeof(UREF));
+		}
+		else if(TYPE=='v'){
+			infoData.write((char*)&A,sizeof(A));
+			infoData.write((char*)&LRATIO,sizeof(LRATIO));
+			infoData.write((char*)&REV,sizeof(REV));
+			infoData.write((char*)&NU,sizeof(NU));
+		}
 		infoData.close();
 	}
 	else{
-		string fileNum = getFilenameDigits(ts);
+		string fileNum = getFilenameDigits(ts,TSMAX);
 		string infoFile = path + "info-" + fileNum + ".bin";
 		double buffer = ts*DT;
 		ofstream infoData(infoFile.c_str(), ios::out | ios::binary);
 		infoData.write((char*)&buffer,sizeof(buffer));
 		infoData.close();
+	}
+}
+
+void writeVortexLocationToBinary(location *locData, int ts){
+	static bool initialized = false;
+	static string path = OUTDIR;
+	static string vorFile[NUMVOR];
+	static ofstream vorData[NUMVOR];
+	if(initialized==false){
+		for(int i=0;i<NUMVOR;i++){
+			vorFile[i] = path + "data-vortex-" + getFilenameDigits(i+1,NUMVOR) + ".bin";
+			vorData[i].open(vorFile[i].c_str(), ios::out | ios::binary);
+		}
+		initialized = true;
+	}
+	for(int i=0;i<NUMVOR;i++){
+		vorData[i].write((char*)&locData[i],sizeof(locData[i]));
+	}
+	if(ts==TSMAX){
+		for(int i=0;i<NUMVOR;i++){
+			vorData[i].close();
+		}
 	}
 }
 
@@ -372,10 +397,10 @@ void saveData(VectorXd &u, VectorXd &v, VectorXd &phi, int ts){
 	writePressureToBinary(phi,ts);
 }
 
-string getFilenameDigits(int ts){
+/* LOCAL FUNCTIONS (ONLY ACCESSIBLE IN THIS CPP) */
+string getFilenameDigits(int ts, int max){
 	//determine number of digits needed for filename
 	int digits = 1;
-	int max = TSMAX;
 	while (max/=10)
 	   digits++;
 	stringstream fileNum;

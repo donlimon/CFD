@@ -1,13 +1,10 @@
-clear all;
-delimiterIn = ' ';
-% DATA FILES
-x_file = '../data/grid-x.dat';
-y_file = '../data/grid-y.dat';
-vel_file = '../data/data-velmag.dat';
-% IMPORT FILES
-x = importdata(x_file,delimiterIn);
-y = importdata(y_file,delimiterIn);
-vel = importdata(vel_file,delimiterIn);
-% PLOT
-contourf(x,y,vel);
-colorbar;
+function [] = plotVelmag(handle,x,y,ngp,ts,tsmax)
+	digits = 1+floor(log10(abs(tsmax)));
+	figure(handle);
+	mFile = fopen(['../data/data-vmag-' sprintf(['%0' num2str(digits) 'd'],ts) '.bin']);
+	m = fread(mFile,[ngp ngp],'double');
+	hold on;
+	contourf(x,y,m);
+	colorbar;
+	hold off;
+end

@@ -12,14 +12,17 @@
 #include <io.hpp>
 #include <taylorgreen.hpp>
 #include <vortex.hpp>
+#include <structs.hpp>
 
 #include <testing.hpp>
 
 using namespace std;
 using namespace Eigen;
 
+/* LOCAL PROTOTYPES */
 inline void checkDivergence(VectorXd &u, VectorXd &v);
 
+/* MAIN FUNCTION */
 int main(){
 	initParallel();	//Eigen parallel intialization
 	printSettings();
@@ -38,7 +41,9 @@ int main(){
 			*v_previous = new VectorXd(NGP*NGP),
 			*v_prelim = new VectorXd(NGP*NGP),
 			*phi = new VectorXd(NGP*NGP),
-			*rhs = new VectorXd(NGP*NGP);
+			*rhs = new VectorXd(NGP*NGP),
+			*omega = new VectorXd(NGP*NGP);
+	location *vorPos = new location[NUMVOR];
 	
 	cout << "Initializing velocity field..." << endl;
 	if(TYPE=='t'){
@@ -90,7 +95,7 @@ int main(){
 		updateRHSmom(*rhs, *u_current, *u_previous, 
 						*v_current, *v_previous, 'v');
 		*v_prelim = solverMom.solve(*rhs);
-
+		
 		//Solve poisson eq.
 		updateRHSpoi(*rhs, *u_prelim, *v_prelim);
 		*phi = solverPoi.solve(*rhs);
@@ -107,17 +112,27 @@ int main(){
 		solveCorrector(*u_current,*u_prelim,*phi,'u');
 		solveCorrector(*v_current,*v_prelim,*phi,'v');
 		
-		//save data
+		//save field data for visual post processing
 		if((ts+1)%SAVEINT==0 || ts==TSMAX-1)
 			saveData(*u_current,*v_current,*phi,ts+1);
 		
 		//Check if solution diverges
 		checkDivergence(*u_current,*v_current);
+		
+		//Calculate vorticity
+		if(TYPE=='v')
+			calcVorticity(*omega,*u_current,*v_current);
+		//Locate vortex centers
+		if(TYPE=='v'){
+			locateVortex(vorPos,*omega,ts+1);
+			writeVortexLocationToBinary(vorPos,ts+1);	
+		}
 	}
 	//Check error if Taylor-Green
 	if(TYPE=='t')
 		calcTaylorError(*u_current,*v_current);
-	
+	writeGridToFile();
+	writeOmegaToFile(*omega);
 	//Free heap
 	delete coMatMom;
 	delete coMatPoi;
@@ -129,12 +144,15 @@ int main(){
 	delete v_prelim;
 	delete phi;
 	delete rhs;
+	delete omega;
+	delete vorPos;
 
 	cout << "Done!" << endl;
 
 	return 0;
 }
 
+/* LOCAL FUNCTIONS (ONLY ACCESSIBLE IN THIS CPP) */
 inline void checkDivergence(VectorXd &u, VectorXd &v){
 	if(u.hasNaN()){
 		cout << "ERROR: Divergence detected!" << endl;

@@ -3,7 +3,6 @@
 //author: Michael Stumpf
 
 #include <iostream>
-#include <omp.h>
 #include <settings.hpp>
 #include <matrixgen.hpp>
 #include <testing.hpp>
@@ -60,7 +59,6 @@ void updateRHSpoi(VectorXd &rhs, VectorXd &u, VectorXd &v){
 	// a*(I+J)
 	double  a = -DX/(4*DT);
 	double I,J;
-	#pragma omp for
 	for(int j=0;j<NGP;j++){
 		for(int i=0;i<NGP;i++){
 			//I
