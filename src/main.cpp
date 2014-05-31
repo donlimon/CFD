@@ -60,7 +60,7 @@ int main(){
 	}
 	
 	//Check CFL condition at t=0
-	checkCFL(*u_current,*v_current,true);
+	checkCFL(*u_current,*v_current,false);
 	
 	//Save settings, grid data and initial velocity field
 	writeInfoToBinary(0);
@@ -112,27 +112,25 @@ int main(){
 		solveCorrector(*u_current,*u_prelim,*phi,'u');
 		solveCorrector(*v_current,*v_prelim,*phi,'v');
 		
-		//save field data for visual post processing
-		if((ts+1)%SAVEINT==0 || ts==TSMAX-1)
-			saveData(*u_current,*v_current,*phi,ts+1);
-		
 		//Check if solution diverges
 		checkDivergence(*u_current,*v_current);
 		
 		//Calculate vorticity
 		if(TYPE=='v')
 			calcVorticity(*omega,*u_current,*v_current);
-		//Locate vortex centers
+		//Locate vortex centers and save to binary file
 		if(TYPE=='v'){
 			locateVortex(vorPos,*omega,ts+1);
 			writeVortexLocationToBinary(vorPos,ts+1);	
 		}
+		//save field data for visual post processing
+		if(TYPE=='v' && ((ts+1)%SAVEINT==0 || ts==TSMAX-1))
+			saveData(*u_current,*v_current,*phi,*omega,ts+1);
 	}
 	//Check error if Taylor-Green
 	if(TYPE=='t')
 		calcTaylorError(*u_current,*v_current);
-	writeGridToFile();
-	writeOmegaToFile(*omega);
+	
 	//Free heap
 	delete coMatMom;
 	delete coMatPoi;

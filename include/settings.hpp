@@ -8,7 +8,7 @@
 //General settings
 const char TYPE='v';		//t: Taylor-Green, v: vortices
 const int NGP=250;			//number of grid points in one dimension 
-const int TSMAX=10000;		//number of time steps
+const int TSMAX=1000;		//number of time steps
 const double DT=0.0000001; 	//time step size
 const double LREF=1;		//characteristic length (=lenght of domain)
 const double DX=LREF/(NGP-1);	//grid width (grid is uniform)
@@ -21,8 +21,9 @@ const double LRATIO=10;		//Length ratio b/a
 const double REV=1000;		//Reynoldsnumber of vortex
 const double NU=1;			//Viscosity
 const int NUMVOR=2;			//number of vortices
+const int THRESHOLD=3;		//threshold for vortex matching (gridpoints per timestep)
 //IO settings
 const char OUTDIR[]="/home/michael/Dokumente/KIT/Numerische Strömungsmechanik II/project/data/";
-const int SAVEINT=1000;
+const int SAVEINT=100;		//saving interval (field data)
 	
 #endif

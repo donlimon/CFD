@@ -299,30 +299,71 @@ void sortCandidates(vector<int>& cand_i, vector<int>& cand_j, vector<double>& ca
 }
 
 void checkVortexOrder(location prevPos[], location newPos[]){
-	double distance, distanceMin;
-	int minPosition;
+	double distance;
+	int matchCounter=0;
 	location tmpPos[NUMVOR];
-	bool posBool[NUMVOR]={false};
+	bool prevBool[NUMVOR]={false},
+		 newBool[NUMVOR]={false};
+	//check if threshold is too big
+	for(int i=0;i<NUMVOR;i++){
+		for(int j=0;j<NUMVOR;j++){
+			if(i!=j){
+				distance = 0;
+				if(abs(prevPos[j].i-prevPos[i].i) <= NGP/2)
+					distance += pow(prevPos[j].i-prevPos[i].i,2);
+				else
+					distance += pow(NGP-abs(prevPos[j].i-prevPos[i].i),2);
+					
+				if(abs(prevPos[j].j-prevPos[i].j) <= NGP/2)
+					distance += pow(prevPos[j].j-prevPos[i].j,2);
+				else
+					distance += pow(NGP-abs(prevPos[j].j-prevPos[i].j),2);
+					
+				distance = sqrt(distance);
+				if(distance <= THRESHOLD){
+					cerr << "WARNING: threshold for vortex assignment is too big" << endl;
+				}		
+			}		
+		}
+	}
 	//look for minimum distance from previous location and assign to temporary variable
 	for(int i=0;i<NUMVOR;i++){
 		for(int j=0;j<NUMVOR;j++){
 			distance = sqrt(pow(newPos[j].i-prevPos[i].i,2)
 								+pow(newPos[j].j-prevPos[i].j,2));
-			if(j==0){
-				distanceMin = distance;
-				minPosition = 0;
-			}
-			else if(distance < distanceMin){
-				distanceMin = distance;
-				minPosition = j;
+			if(distance < THRESHOLD){
+				tmpPos[i] = newPos[j];
+				newBool[j] = true;
+				prevBool[i] = true;
+				matchCounter++;
+			}				
+		}
+	}
+	//assign vortices that could not be matched (e.g. if boundary is crossed)
+	if(matchCounter!=NUMVOR){
+		for(int i=0;i<NUMVOR;i++){
+			if(prevBool[i]==true)
+				continue;
+			
+			for(int j=0;j<NUMVOR;j++){
+				if(newBool[j]==true)
+					continue;
+					
+				distance = sqrt(pow(newPos[j].i-prevPos[i].i,2)
+									+pow(newPos[j].j-prevPos[i].j,2));
+				if(abs(abs(newPos[j].i-prevPos[i].i)-NGP) <= THRESHOLD
+					|| abs(abs(newPos[j].j-prevPos[i].j)-NGP) <= THRESHOLD)
+				{
+					tmpPos[i] = newPos[j];
+					newBool[j] = true;
+					prevBool[i] = true;
+					matchCounter++;
+				}				
 			}
 		}
-		tmpPos[i] = newPos[minPosition];
-		if(posBool[minPosition]==true)
-			cerr << "WARNING: conflict while assigning vortex order" << endl;
-		else
-			posBool[minPosition] = true;
 	}
+	if(matchCounter!=NUMVOR)
+		cerr << "WARNING: " << matchCounter-NUMVOR << " vortices could not be matched" << endl;
 	//copy temporary variable to new location
 	for(int i=0;i<NUMVOR;i++){
 		newPos[i] = tmpPos[i];

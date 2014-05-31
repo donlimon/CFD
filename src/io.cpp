@@ -219,9 +219,9 @@ void writePhiToFile(VectorXd &phi){
 	phiData.close();
 }
 
-void writeOmegaToFile(VectorXd &omega){
+void writeVorticityToFile(VectorXd &omega){
 	string path = OUTDIR;
-	string omegaFile = path + "data-omega.dat";
+	string omegaFile = path + "data-vor.dat";
 	ofstream omegaData(omegaFile.c_str());
 	
 	for(int j=0;j<NGP;j++){
@@ -335,6 +335,21 @@ void writePressureToBinary(VectorXd &phi, int ts){
 	pData.close();
 }
 
+void writeVorticityToBinary(VectorXd &omega, int ts){
+	string path = OUTDIR;
+	string fileNum = getFilenameDigits(ts,TSMAX);
+	string vorFile = path + "data-vor-" + fileNum + ".bin";
+	ofstream vorData(vorFile.c_str(), ios::out | ios::binary);
+	
+	double phi_nab, buffer;
+	for(int j=0;j<NGP;j++){
+		for(int i=0;i<NGP;i++){
+			vorData.write((char*)&omega(i+j*NGP),sizeof(omega(i+j*NGP)));
+		}
+	}
+	vorData.close();
+}
+
 void writeInfoToBinary(int ts){
 	string path = OUTDIR;
 	if(ts==0){
@@ -391,10 +406,11 @@ void writeVortexLocationToBinary(location *locData, int ts){
 	}
 }
 
-void saveData(VectorXd &u, VectorXd &v, VectorXd &phi, int ts){
+void saveData(VectorXd &u, VectorXd &v, VectorXd &phi, VectorXd &omega, int ts){
 	writeInfoToBinary(ts);
 	writeVelocityToBinary(u,v,ts);
 	writePressureToBinary(phi,ts);
+	writeVorticityToBinary(omega,ts);
 }
 
 /* LOCAL FUNCTIONS (ONLY ACCESSIBLE IN THIS CPP) */
