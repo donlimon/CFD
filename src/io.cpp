@@ -408,6 +408,7 @@ void writeVortexLocationToBinary(location *locData, int ts){
 	}
 	for(int i=0;i<NUMVOR;i++){
 		vorData[i].write((char*)&locData[i],sizeof(locData[i]));
+		vorData[i].flush();
 	}
 	if(ts==TSMAX){
 		for(int i=0;i<NUMVOR;i++){
