@@ -1,7 +1,7 @@
-function [vortex1 vortex2] = readVortexData(tsmax)
+function [vortex1 vortex2] = readVortexData(dataDir,tsmax)
 	% Get data from binary files
-	vorFile1 = fopen('../data/data-vortex-1.bin');
-	vorFile2 = fopen('../data/data-vortex-2.bin');
+	vorFile1 = fopen([dataDir 'data-vortex-1.bin']);
+	vorFile2 = fopen([dataDir 'data-vortex-2.bin']);
 
 	%allocate memory
 	vortex1(tsmax) = struct('i',[], 'j',[], 'ts',[]);

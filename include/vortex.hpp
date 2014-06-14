@@ -10,6 +10,7 @@
 
 void initializeVortex(VectorXd &u, VectorXd &v);
 void calcVorticity(VectorXd &omega, VectorXd &u, VectorXd &v);
-void locateVortex(location *newPos, VectorXd &phi, int ts);
+void locateVortex(location *newPos, VectorXd &phi, int ts);	//uses candidates and threshold
+void locateVortex2(location *newPos, VectorXd &omega, int ts); //uses global min/max of vorticity
 
 #endif

@@ -120,7 +120,7 @@ int main(){
 			calcVorticity(*omega,*u_current,*v_current);
 		//Locate vortex centers and save to binary file
 		if(TYPE=='v'){
-			locateVortex(vorPos,*omega,ts+1);
+			locateVortex2(vorPos,*omega,ts+1);
 			writeVortexLocationToBinary(vorPos,ts+1);	
 		}
 		//save field data for visual post processing

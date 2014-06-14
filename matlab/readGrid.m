@@ -1,7 +1,10 @@
-function [x y] = readGrid(ngp)
-	xFile = fopen('../data/grid-x.bin');
-	yFile = fopen('../data/grid-y.bin');
+function [x y] = readGrid(dataDir,ngp)
+	xFileHandle = fopen([dataDir 'grid-x.bin']);
+	yFileHandle = fopen([dataDir 'grid-y.bin']);
 	
-	x = fread(xFile,[ngp ngp],'double');
-	y = fread(yFile,[ngp ngp],'double');
+	x = fread(xFileHandle,[ngp ngp],'double');
+	y = fread(yFileHandle,[ngp ngp],'double');
+	
+	fclose(xFileHandle);
+	fclose(yFileHandle);
 end

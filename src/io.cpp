@@ -20,7 +20,7 @@ string getFilenameDigits(int ts, int max);
 
 /* FUNCTIONS PROVIDED FOR OTHER CPP */
 void printSettings(){
-	cout << "Settings" << endl
+	cout << "Simulation settings" << endl
 		 << "---------------------- " << endl;
 	cout << "Simulation type:       ";
 	if(TYPE=='t')
@@ -49,19 +49,29 @@ void printSettings(){
 		cout << "Aborting..." << endl;
 		exit(2);
 	}
+	cout << "I/O settings" << endl
+		 << "---------------------- " << endl
+		 << "Output directory: " << OUTDIR << endl
+		 << "Saving interval:  " << SAVEINT << endl
+		 << "Progress display: " << PROGSIZE << endl << endl;
 }
 
 void printProgress(int ts){
 	static bool progressInit=false;
 	static time_t time0;
+	static int interval;
 	if(progressInit==false){
 		time0=time(NULL);
 		progressInit=true;
 	}
-	int interval = TSMAX/10;	//show progress every ~10%
-	if(interval==0){
+	if(PROGSIZE!=0)
+		interval = TSMAX/PROGSIZE;
+	else
 		return;
-	}
+	
+	if(interval==0)
+		return;
+	
 	else if((ts+1)%interval==0){
 		time_t curTime;
 		double progress, elapTime;

@@ -176,7 +176,6 @@ void calcVorticity(VectorXd &omega, VectorXd &u, VectorXd &v){
 
 void locateVortex(location *newPos, VectorXd &omega, int ts){
 	int i_low, i_up, j_low, j_up;
-	static bool initialized = false;
 	bool alternative = false;
 	static location prevPos[NUMVOR]; // coordinates of maxima at last ts
 	//create vectors for possible candidates
@@ -187,6 +186,7 @@ void locateVortex(location *newPos, VectorXd &omega, int ts){
 	candidates_i.reserve(buffer);
 	candidates_j.reserve(buffer);
 	candidates_val.reserve(buffer);
+	//Determine vortex candidates (maxima of vorticity)
 	for(int j=0;j<NGP;j++){
 		for(int i=0;i<NGP;i++){
 			if(i!=0 && i!=(NGP-1))
@@ -215,13 +215,13 @@ void locateVortex(location *newPos, VectorXd &omega, int ts){
 			}
 		}
 	}
-	if(candidates_i.size() > NUMVOR){
+	//Get NUMVOR candidates with maximum vorticity from candidates
+	if(candidates_i.size() >= NUMVOR){
 		//cout << "Found " << candidates_i.size() << " maxima @ time step #" << ts << endl;
 		if(candidates_i.size() != candidates_j.size()){
-			cerr << "ERROR: size of canditates vectors is not equal @ time step #" << ts << endl;
+			cerr << "ERROR: size of canditate vectors is not equal @ time step #" << ts << endl;
 			exit(3);
 		}
-		
 		//sort candidates in ascending order
 		sortCandidates(candidates_i,candidates_j,candidates_val);
 		//assign candidates with largest vorticity to new position
@@ -230,7 +230,7 @@ void locateVortex(location *newPos, VectorXd &omega, int ts){
 			newPos[i].j = candidates_j[candidates_j.size()-1-i];
 		}
 		//check if positions have not changed (else switch)
-		if(initialized)
+		if(ts!=1)
 			checkVortexOrder(prevPos,newPos);
 		//assign time step
 		for(int i=0;i<NUMVOR;i++){
@@ -242,19 +242,35 @@ void locateVortex(location *newPos, VectorXd &omega, int ts){
 			prevPos[i].j = newPos[i].j;
 			prevPos[i].ts = newPos[i].ts;
 		}
-		//set flags
-		initialized = true;
-	}
-	else if(candidates_i.size() < NUMVOR){
-		cerr << "Found less than " << NUMVOR << " maxima @ time step #" << ts << endl;
 	}
 	else{
-		initialized = false;
+		cerr << "Found less than " << NUMVOR << " maxima @ time step #" << ts << endl;
 	}
-//	cout << "Position of Minimum 1 @ time step #" << newPos[0].ts << " i=" << newPos[0].i << " j="
-//			 << newPos[0].j << endl;
-//	cout << "Position of Minimum 2 @ time step #" << newPos[0].ts << " i=" << newPos[1].i << " j="
-//			 << newPos[1].j << endl;
+}
+
+void locateVortex2(location *newPos, VectorXd &omega, int ts){
+	double maxVorticity=0, minVorticity=0;
+	location maxVorticityPos, minVorticityPos;
+	for(int j=0;j<NGP;j++){
+		for(int i=0;i<NGP;i++){
+			if(omega(i+j*NGP)>maxVorticity){
+				maxVorticity=omega(i+j*NGP);
+				maxVorticityPos.i=i;
+				maxVorticityPos.j=j;
+			}
+			if(omega(i+j*NGP)<minVorticity){
+				minVorticity=omega(i+j*NGP);
+				minVorticityPos.i=i;
+				minVorticityPos.j=j;
+			}
+		}
+	}
+	newPos[0].i = minVorticityPos.i;
+	newPos[0].j = minVorticityPos.j;
+	newPos[0].ts = ts;
+	newPos[1].i = maxVorticityPos.i;
+	newPos[1].j = maxVorticityPos.j;
+	newPos[1].ts = ts;
 }
 
 /* LOCAL FUNCTIONS (ONLY ACCESSIBLE IN THIS CPP) */
