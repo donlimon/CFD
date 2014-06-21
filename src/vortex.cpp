@@ -27,7 +27,7 @@ void initializeVortex(VectorXd &u, VectorXd &v){
 		   vortexCenterX, vortexCenterY,	//coordinates of vortex center
 		   delX, delY,			//Delta X and Delta Y
 		   r;					//distance from vortex center
-	double gamma=REV*NU, b=LRATIO*A;
+	double gamma=RE*NU, b=LRATIO*A;
 	//Vortex 1
 	vortexCenterX=((NGP-1)/2)*DX + DX/2 - b/(2*sqrt(2));	//lower left
 	vortexCenterY=((NGP-1)/2)*DX - b/(2*sqrt(2));

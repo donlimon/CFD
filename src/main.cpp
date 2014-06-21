@@ -14,8 +14,6 @@
 #include <vortex.hpp>
 #include <structs.hpp>
 
-#include <testing.hpp>
-
 using namespace std;
 using namespace Eigen;
 
@@ -60,7 +58,7 @@ int main(){
 	}
 	
 	//Check CFL condition at t=0
-	checkCFL(*u_current,*v_current,false);
+	checkStabilityCriteria(*u_current,*v_current);
 	
 	//Save settings, grid data and initial velocity field
 	writeInfoToBinary(0);

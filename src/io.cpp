@@ -41,7 +41,7 @@ void printSettings(){
 		 	 << "Reference speed:       " << UREF << endl << endl;
 	}
 	else if(TYPE=='v'){
-		cout << "Reynolds number:       " << REV << endl
+		cout << "Reynolds number:       " << RE << endl
 		 	 << "Characteristic radius: " << A << endl
 		 	 << "Length ratio:          " << LRATIO << endl << endl;
 	}
@@ -90,8 +90,8 @@ void printProgress(int ts){
 	}
 }
 
-void checkCFL(VectorXd &u, VectorXd &v,bool recommendTS){
-	double vmag_max = 0, vmag_tmp, u_inp, v_inp, CFL;
+void checkStabilityCriteria(VectorXd &u, VectorXd &v){
+	double vmag_max = 0, vmag_tmp, u_inp, v_inp, sigma, beta;
 	for(int j=0;j<NGP;j++){
 		for(int i=0;i<NGP;i++){
 			if(i!=0)
@@ -108,15 +108,11 @@ void checkCFL(VectorXd &u, VectorXd &v,bool recommendTS){
 				vmag_max = vmag_tmp;
 		}
 	}
-	CFL = DT*vmag_max/DX;
-	cout << "Current CFL number: " << CFL << endl;
-	if(CFL>1)
-		cout << "WARNING: simulation might be unstable (CFL > 1)" << endl;
-	if(recommendTS){
-		cout << "Recommended time step size: "  << endl
-		 	 << "CFL = 0.5: " << 0.5*DX/vmag_max << endl
-		 	 << "CFL = 0.1: " << 0.1*DX/vmag_max << endl; 
-	}
+	sigma = DT*vmag_max/DX;
+	beta = NU*DT/(DX*DX);
+	cout << "Stability parameters: sigma = " << sigma << " beta = " << beta << endl;
+	if(sigma > 0.5)
+		cout << "WARNING: simulation might be unstable (sigma > 0.5)" << endl;
 }
 
 void writeGridToFile(){
@@ -379,7 +375,7 @@ void writeInfoToBinary(int ts){
 		else if(TYPE=='v'){
 			infoData.write((char*)&A,sizeof(A));
 			infoData.write((char*)&LRATIO,sizeof(LRATIO));
-			infoData.write((char*)&REV,sizeof(REV));
+			infoData.write((char*)&RE,sizeof(RE));
 			infoData.write((char*)&NU,sizeof(NU));
 		}
 		infoData.close();

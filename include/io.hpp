@@ -9,7 +9,7 @@
 
 void printSettings();	//Print settings from settings.hpp on screen
 void printProgress(int ts); //Prints progress on screen
-void checkCFL(VectorXd &u, VectorXd &v, bool recommendTS);
+void checkStabilityCriteria(VectorXd &u, VectorXd &v);
 //ASCII file functions (for debugging)
 void writeGridToFile();	//writes gridpoints for u,v to file
 void writeVelocityToFile(VectorXd &u,VectorXd &v); //writes velocity to ascii file

@@ -6,19 +6,19 @@
 #include <cmath>
 #include <taylorgreen.hpp>
 #include <settings.hpp>
+#include <io.hpp>
 
 using namespace std;
 using namespace Eigen;
 
 void calcTaylorGreen(VectorXd &velocity,char comp,double t){
-	double nu = (LREF*UREF)/RE,
-		   x,y;
+	double nu = (LREF*UREF)/RE;
 	//u-component
 	if(comp=='u'){
 		for(int j=0;j<NGP;j++){
-			y=j*DX; //y-coordinate
+			double y=((double)j)/NGP; //y-coordinate
 			for(int i=0;i<NGP;i++){
-				x=i*DX + DX/2; //x-coordinate (shifted grid)
+				double x=((double)i)/NGP + DX/2; //x-coordinate (shifted grid)
 				velocity(i+j*NGP) =
 					sin(2*M_PI*x)*cos(2*M_PI*y)*exp(-8*M_PI*M_PI*nu*t);
 			}
@@ -26,9 +26,9 @@ void calcTaylorGreen(VectorXd &velocity,char comp,double t){
 	}
 	else if(comp=='v'){
 		for(int j=0;j<NGP;j++){
-			y=j*DX + DX/2; //y-coordinate (shifted grid)
+			double y=((double)j)/NGP + DX/2; //y-coordinate (shifted grid)
 			for(int i=0;i<NGP;i++){
-				x=i*DX; //x-coordinate
+				double x=((double)i)/NGP; //x-coordinate
 				velocity(i+j*NGP) =
 					-sin(2*M_PI*y)*cos(2*M_PI*x)*exp(-8*M_PI*M_PI*nu*t);
 			}
@@ -59,8 +59,10 @@ void calcTaylorError(VectorXd &u, VectorXd &v){
 	cout << "Normalized relative error at time step #" << TSMAX << endl
 		 << "velocity u: " << u_err << endl
 		 << "velocity v: " << v_err << endl;
-	cout << "Log(DX)\tLog(Err)" << endl
-		 << log(DX) << "\t" << log(u_err) << endl;
+	cout << "DX\tErr" << endl
+		 << DX << "\t" << u_err << endl;
+	cout << "DT\tErr" << endl
+		 << DT << "\t" << u_err << endl;
 	delete u_tg;
 	delete v_tg;
 }
