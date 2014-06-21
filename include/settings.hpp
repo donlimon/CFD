@@ -7,11 +7,11 @@
 
 //General settings
 const char TYPE='t';		//t: Taylor-Green, v: vortices
-const int NGP=400;			//number of grid points in one dimension 
+const int NGP=100;			//number of grid points in one dimension 
 const int TSMAX=1000;		//number of time steps
 const double DT=0.0001; 	//time step size
 const double LREF=1;		//characteristic length (=lenght of domain)
-const double DX=LREF/(NGP-1);	//grid width (grid is uniform)
+const double DX=LREF/NGP;	//grid width (grid is uniform)
 const double RE=10;			//Reynolds number
 //Taylor Green
 const double UREF=1;		//characteristic speed
