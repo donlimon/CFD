@@ -63,6 +63,9 @@ void calcTaylorError(VectorXd &u, VectorXd &v){
 		 << DX << "\t" << u_err << endl;
 	cout << "DT\tErr" << endl
 		 << DT << "\t" << u_err << endl;
+		 
+	writeVelocityToBinary(u,v,1);
+	writeVelocityToBinary(*u_tg,*v_tg,2);
 	delete u_tg;
 	delete v_tg;
 }

@@ -63,7 +63,8 @@ int main(){
 	//Save settings, grid data and initial velocity field
 	writeInfoToBinary(0);
 	writeGridToBinary();
-	writeVelocityToBinary(*u_current,*v_current,0);
+	if(TYPE=='v')
+		writeVelocityToBinary(*u_current,*v_current,0);
 
 	//Initialize solver
 	cout << "Initializing solver..." << endl;
