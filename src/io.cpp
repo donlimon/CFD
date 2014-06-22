@@ -111,8 +111,6 @@ void checkStabilityCriteria(VectorXd &u, VectorXd &v){
 	sigma = DT*vmag_max/DX;
 	beta = NU*DT/(DX*DX);
 	cout << "Stability parameters: sigma = " << sigma << " beta = " << beta << endl;
-	if(sigma > 0.5)
-		cout << "WARNING: simulation might be unstable (sigma > 0.5)" << endl;
 }
 
 void writeGridToFile(){
