@@ -1,0 +1,22 @@
+fracstep
+
+fracstep is a CFD simulation programm for direct numerical simulation of two interacting vortices.
+It uses a fractional step method as proposed by Kim and Moin (1985). More information can be found
+in doc/presentation.pdf.
+fracstep is part of an assignment in CFD II course at KIT.
+
+Prerequisites:
+- fracstep uses Eigen3 library, which is available at http://eigen.tuxfamily.org/
+
+Usage:
+0) if necessary, change path to eigen3 library in src/makefile
+
+1) adjust settings in include/settings.hpp
+
+2) compile fracstep by using
+	make release	-> speed optimized version
+	make debug		-> debug version
+   inside src/ directory. 
+   You can use make clean to remove object files from src/obj/.
+   
+3) run bin/fracstep

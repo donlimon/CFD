@@ -1,3 +1,23 @@
+/*
+ * matrixgen.cpp
+ * This file is part of fracstep
+ *
+ * Copyright (C) 2014 - Michael Stumpf
+ *
+ * fracstep is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * fracstep is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with fracstep. If not, see <http://www.gnu.org/licenses/>.
+ */
+
 //Functions for generating/updating coefficient matrices
 //file: matrixgen.cpp
 //author: Michael Stumpf
@@ -5,7 +25,6 @@
 #include <iostream>
 #include <settings.hpp>
 #include <matrixgen.hpp>
-#include <testing.hpp>
 
 using namespace std;
 using namespace Eigen;
@@ -13,10 +32,12 @@ using namespace Eigen;
 /* LOCAL PROTOTYPES */
 inline void assignSurroundingPoints(int i, int j,int &im1,int &ip1, int &jm1, int &jp1);
 
-//Create coefficient matrix A (for momentum/poisson eq.)
-//a -> parameter in main diagonal
-//b -> parameter in side diagonals
+/* FUNCTIONS PROVIDED FOR OTHER CPP */
+
 void createCoeffMat(SpMat &mat,double a, double b){
+	//Create coefficient matrix A (for momentum/poisson eq.)
+	//a -> parameter in main diagonal
+	//b -> parameter in side diagonals
 	mat.reserve(VectorXi::Constant(NGP*NGP,5));	//5 entries per row
 	for(int i=0;i<(NGP*NGP);i++){
 		//main diagonal with irregularities
